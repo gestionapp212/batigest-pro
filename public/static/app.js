@@ -47,6 +47,21 @@ const DB = {
 
 // ===== SEED DATA =====
 function initDemoData() {
+  // Toujours vérifier et corriger les comptes essentiels
+  const existingUsers = DB.getAll('users');
+  const adminExists = existingUsers.find(u => u.email === 'admin@batigest.ma');
+  if (!adminExists) {
+    // Premier lancement sur ce navigateur – initialiser toutes les données
+    DB.set('initialized', false);
+  }
+  // Mettre à jour le compte Super Admin si nécessaire
+  const saUser = existingUsers.find(u => u.role === 'super_admin');
+  if (saUser && saUser.email !== 'said.gamdaoui1984@gmail.com') {
+    const updatedUsers = existingUsers.map(u => u.role === 'super_admin'
+      ? { ...u, name: 'Said Hamdaoui', email: 'said.gamdaoui1984@gmail.com', password: 'said1984@' }
+      : u);
+    DB.set('users', updatedUsers);
+  }
   if (DB.get('initialized')) return;
 
   // Companies
@@ -57,9 +72,9 @@ function initDemoData() {
   // Users
   const users = [
     { id: 'u0', company_id: null, name: 'Said Hamdaoui', email: 'said.gamdaoui1984@gmail.com', password: 'said1984@', role: 'super_admin', status: 'active' },
-    { id: 'u1', company_id: 'c1', name: 'Ahmed Benali', email: 'admin@btpmaroc.ma', password: 'admin123', role: 'admin', status: 'active' },
-    { id: 'u2', company_id: 'c1', name: 'Karim Idrissi', email: 'karim@btpmaroc.ma', password: 'user123', role: 'user', status: 'active' },
-    { id: 'u3', company_id: 'c2', name: 'Sara Tazi', email: 'admin@servicesplus.ma', password: 'admin123', role: 'admin', status: 'active' },
+    { id: 'u1', company_id: 'c1', name: 'Admin BatiGest', email: 'admin@batigest.ma', password: 'Admin2024!', role: 'admin', status: 'active' },
+    { id: 'u2', company_id: 'c1', name: 'Utilisateur Test', email: 'user@batigest.ma', password: 'User2024!', role: 'user', status: 'active' },
+    { id: 'u3', company_id: 'c2', name: 'Admin Services Plus', email: 'admin@servicesplus.ma', password: 'Admin2024!', role: 'admin', status: 'active' },
   ];
   DB.set('users', users);
 
