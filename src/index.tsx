@@ -39,6 +39,7 @@ function getMainHTML(): string {
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
   <div id="root"></div>
+  <script src="/static/pdf.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>`

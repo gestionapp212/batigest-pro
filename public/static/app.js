@@ -853,6 +853,7 @@ function renderChantierDetail(id) {
         <div style="color:var(--text-secondary);font-size:13px"><i class="fas fa-user" style="margin-right:4px"></i>${ch.client_nom} – Budget: ${fmt(ch.budget)}</div>
       </div>
       <button class="btn btn-secondary" onclick="editChantier('${id}')"><i class="fas fa-edit"></i> Modifier</button>
+      <button class="btn btn-primary" onclick="printChantierRapport('${id}')"><i class="fas fa-file-pdf"></i> Rapport PDF</button>
       <button class="btn btn-danger" onclick="deleteChantier('${id}')"><i class="fas fa-trash"></i></button>
     </div>
 
@@ -1318,7 +1319,8 @@ function renderDevis() {
           <td style="font-weight:700">${fmt(d.montant_ttc)}</td>
           <td><span class="badge ${stMap[d.statut]||'badge-secondary'}">${stLabel[d.statut]||d.statut}</span></td>
           <td>
-            <button class="btn btn-ghost btn-sm" title="Convertir en facture" onclick="convertToFacture('${d.id}')"><i class="fas fa-file-invoice-dollar"></i></button>
+            <button class="btn btn-ghost btn-sm" title="Imprimer / PDF" onclick="printDevis('${d.id}')"><i class="fas fa-print" style="color:#2563eb"></i></button>
+            <button class="btn btn-ghost btn-sm" title="Convertir en facture" onclick="convertToFacture('${d.id}')"><i class="fas fa-file-invoice-dollar" style="color:#16a34a"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="deleteDevis('${d.id}')"><i class="fas fa-trash" style="color:#dc2626"></i></button>
           </td>
         </tr>`).join('')}
@@ -1463,6 +1465,7 @@ function renderFactures() {
           <td style="color:#dc2626;font-weight:600">${fmt(f.montant_ttc-f.montant_paye)}</td>
           <td><span class="badge ${stMap[f.statut]||'badge-secondary'}">${stLabel[f.statut]||f.statut}</span></td>
           <td>
+            <button class="btn btn-ghost btn-sm" title="Imprimer / PDF" onclick="printFacture('${f.id}')"><i class="fas fa-print" style="color:#2563eb"></i></button>
             <button class="btn btn-ghost btn-sm" title="Enregistrer paiement" onclick="openPaiementFacture('${f.id}')"><i class="fas fa-money-bill-wave" style="color:#16a34a"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="deleteFacture('${f.id}')"><i class="fas fa-trash" style="color:#dc2626"></i></button>
           </td>
@@ -2100,28 +2103,100 @@ function renderParametres() {
   const users = co ? DB.getAll('users').filter(x=>x.company_id===co.id) : [];
   const planLimits = { basic: 1, pro: 4, business: 10 };
   const maxUsers = planLimits[co?.plan] || 1;
+  const logo = co ? (localStorage.getItem('batigest_logo_' + co.id) || '') : '';
+
   return `
-  <div style="max-width:900px">
+  <div style="max-width:960px">
     <div style="margin-bottom:20px"><h2 style="font-size:20px;font-weight:700">Paramètres</h2></div>
-    <!-- Infos société -->
+
+    <!-- LOGO + INFOS SOCIÉTÉ -->
     <div class="card" style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-        <div style="width:48px;height:48px;background:var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px">🏢</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="width:44px;height:44px;background:var(--primary);border-radius:11px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px">🏢</div>
         <div>
-          <h3 style="font-weight:700;font-size:16px">${co?.name || 'Société'}</h3>
-          <p style="color:var(--text-secondary);font-size:13px">Informations et configuration</p>
+          <h3 style="font-weight:700;font-size:16px">Informations de la société</h3>
+          <p style="color:var(--text-secondary);font-size:13px">Ces informations apparaissent sur vos PDF (devis, factures, rapports)</p>
         </div>
       </div>
-      <div class="form-grid-2">
-        <div class="form-group"><label class="form-label">Nom société</label><input id="co-nom" class="form-input" value="${co?.name||''}"/></div>
-        <div class="form-group"><label class="form-label">Email</label><input id="co-email" type="email" class="form-input" value="${co?.email||''}"/></div>
-        <div class="form-group"><label class="form-label">Téléphone</label><input id="co-phone" class="form-input" value="${co?.phone||''}"/></div>
-        <div class="form-group"><label class="form-label">Ville</label><input id="co-city" class="form-input" value="${co?.city||''}"/></div>
+
+      <!-- LOGO UPLOAD -->
+      <div style="display:flex;align-items:center;gap:24px;margin-bottom:20px;padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border)">
+        <div id="logo-preview" style="width:90px;height:90px;border-radius:14px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex-shrink:0">
+          ${logo ? `<img src="${logo}" style="width:100%;height:100%;object-fit:contain"/>` : `<div style="text-align:center;color:var(--text-secondary)"><i class="fas fa-building" style="font-size:28px;margin-bottom:4px"></i><div style="font-size:10px">Logo</div></div>`}
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:6px">Logo de la société</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Format PNG, JPG ou SVG. Recommandé : 200×200px minimum. Affiché sur tous les documents PDF.</div>
+          <div style="display:flex;gap:8px">
+            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+              <i class="fas fa-upload"></i> Importer logo
+              <input type="file" accept="image/*" style="display:none" onchange="uploadLogo(event)"/>
+            </label>
+            ${logo ? `<button class="btn btn-secondary btn-sm" onclick="removeLogo()"><i class="fas fa-trash"></i> Supprimer</button>` : ''}
+          </div>
+        </div>
       </div>
-      <button class="btn btn-primary" onclick="updateCompany()"><i class="fas fa-save"></i> Enregistrer</button>
+
+      <!-- INFOS DE BASE -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:12px">Coordonnées</div>
+        <div class="form-grid-2">
+          <div class="form-group"><label class="form-label">Nom de la société <span class="req">*</span></label><input id="co-nom" class="form-input" value="${co?.name||''}"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input id="co-email" type="email" class="form-input" value="${co?.email||''}"/></div>
+          <div class="form-group"><label class="form-label">Téléphone</label><input id="co-phone" class="form-input" value="${co?.phone||''}"/></div>
+          <div class="form-group"><label class="form-label">Ville</label><input id="co-city" class="form-input" value="${co?.city||''}"/></div>
+          <div class="form-group" style="grid-column:1/-1"><label class="form-label">Adresse complète</label><input id="co-address" class="form-input" value="${co?.address||''}" placeholder="Rue, N°, Quartier..."/></div>
+        </div>
+      </div>
+
+      <!-- INFOS LÉGALES -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:12px">Informations légales & fiscales</div>
+        <div class="form-grid-3">
+          <div class="form-group"><label class="form-label">ICE</label><input id="co-ice" class="form-input" value="${co?.ice||''}" placeholder="000000000000000"/></div>
+          <div class="form-group"><label class="form-label">RC (Registre Commerce)</label><input id="co-rc" class="form-input" value="${co?.rc||''}" placeholder="N° RC"/></div>
+          <div class="form-group"><label class="form-label">IF (Identifiant Fiscal)</label><input id="co-if" class="form-input" value="${co?.if_num||''}" placeholder="N° IF"/></div>
+          <div class="form-group"><label class="form-label">CNSS</label><input id="co-cnss" class="form-input" value="${co?.cnss||''}" placeholder="N° CNSS"/></div>
+          <div class="form-group"><label class="form-label">Patente</label><input id="co-patente" class="form-input" value="${co?.patente||''}" placeholder="N° Patente"/></div>
+        </div>
+      </div>
+
+      <!-- INFOS BANCAIRES -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:12px">Informations bancaires (affichées sur les factures)</div>
+        <div class="form-grid-2">
+          <div class="form-group"><label class="form-label">Nom de la banque</label><input id="co-bank-name" class="form-input" value="${co?.bank_name||''}" placeholder="Attijariwafa Bank, CIH, BMCE..."/></div>
+          <div class="form-group"><label class="form-label">RIB / IBAN</label><input id="co-bank" class="form-input" value="${co?.bank||''}" placeholder="007 640 0000000000000000 00"/></div>
+        </div>
+      </div>
+
+      <!-- APERÇU DOCUMENT -->
+      <div style="margin-bottom:20px;padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:10px">📄 Aperçu en-tête document PDF</div>
+        <div style="background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div id="header-preview-logo" style="width:44px;height:44px;border-radius:10px;background:#2563eb;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;overflow:hidden">
+              ${logo ? `<img src="${logo}" style="width:100%;height:100%;object-fit:contain"/>` : (co?.name||'B').charAt(0)}
+            </div>
+            <div>
+              <div style="color:#fff;font-weight:700;font-size:14px" id="header-preview-name">${co?.name||'Ma Société'}</div>
+              <div style="color:#94a3b8;font-size:11px">${co?.email||''} ${co?.phone?'· '+co.phone:''}</div>
+              ${co?.ice?`<div style="color:#94a3b8;font-size:10px">ICE: ${co.ice}</div>`:''}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:#60a5fa;font-size:10px;font-weight:700;letter-spacing:1px">DEVIS / FACTURE</div>
+            <div style="color:#fff;font-size:20px;font-weight:800">N° 2024-001</div>
+            <div style="color:#94a3b8;font-size:11px">Date: ${new Date().toLocaleDateString('fr-FR')}</div>
+          </div>
+        </div>
+        <div style="height:3px;background:linear-gradient(90deg,#2563eb,#7c3aed,#06b6d4);border-radius:0 0 4px 4px;margin:0 0 0 0"></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="updateCompany()"><i class="fas fa-save"></i> Enregistrer les modifications</button>
     </div>
 
-    <!-- Abonnement -->
+    <!-- ABONNEMENT -->
     <div class="card" style="margin-bottom:20px">
       <h3 style="font-weight:700;margin-bottom:16px"><i class="fas fa-crown" style="color:#d97706;margin-right:8px"></i>Abonnement actuel</h3>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
@@ -2143,11 +2218,11 @@ function renderParametres() {
       </div>
     </div>
 
-    <!-- Utilisateurs -->
-    <div class="card">
+    <!-- UTILISATEURS -->
+    <div class="card" style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <h3 style="font-weight:700"><i class="fas fa-users" style="color:#2563eb;margin-right:8px"></i>Utilisateurs (${users.length}/${maxUsers})</h3>
-        ${users.length < maxUsers ? `<button class="btn btn-primary btn-sm" onclick="openNewUserModal()"><i class="fas fa-user-plus"></i> Ajouter</button>` : `<span class="badge badge-warning">Limite atteinte</span>`}
+        ${users.length < maxUsers ? `<button class="btn btn-primary btn-sm" onclick="openNewUserModal()"><i class="fas fa-user-plus"></i> Ajouter</button>` : `<span class="badge badge-warning">Limite plan atteinte</span>`}
       </div>
       <div class="table-wrapper">
         <table>
@@ -2167,12 +2242,12 @@ function renderParametres() {
       </div>
     </div>
 
-    <!-- Thème & Langue -->
-    <div class="card" style="margin-top:20px">
+    <!-- APPARENCE -->
+    <div class="card">
       <h3 style="font-weight:700;margin-bottom:16px"><i class="fas fa-palette" style="color:#7c3aed;margin-right:8px"></i>Apparence</h3>
       <div style="display:flex;gap:12px">
-        <button class="btn ${AppState.theme==='light'?'btn-primary':'btn-secondary'}" onclick="setTheme('light')"><i class="fas fa-sun"></i> Clair</button>
-        <button class="btn ${AppState.theme==='dark'?'btn-primary':'btn-secondary'}" onclick="setTheme('dark')"><i class="fas fa-moon"></i> Sombre</button>
+        <button class="btn ${AppState.theme==='light'?'btn-primary':'btn-secondary'}" onclick="setTheme('light')"><i class="fas fa-sun"></i> Mode clair</button>
+        <button class="btn ${AppState.theme==='dark'?'btn-primary':'btn-secondary'}" onclick="setTheme('dark')"><i class="fas fa-moon"></i> Mode sombre</button>
       </div>
     </div>
   </div>`;
@@ -2180,11 +2255,50 @@ function renderParametres() {
 
 function updateCompany() {
   const co = AppState.currentCompany;
-  const updates = { name: document.getElementById('co-nom').value, email: document.getElementById('co-email').value, phone: document.getElementById('co-phone').value, city: document.getElementById('co-city').value };
+  const updates = {
+    name: document.getElementById('co-nom').value,
+    email: document.getElementById('co-email').value,
+    phone: document.getElementById('co-phone').value,
+    city: document.getElementById('co-city').value,
+    address: document.getElementById('co-address')?.value || co.address || '',
+    ice: document.getElementById('co-ice')?.value || co.ice || '',
+    rc: document.getElementById('co-rc')?.value || co.rc || '',
+    if_num: document.getElementById('co-if')?.value || co.if_num || '',
+    cnss: document.getElementById('co-cnss')?.value || co.cnss || '',
+    patente: document.getElementById('co-patente')?.value || co.patente || '',
+    bank_name: document.getElementById('co-bank-name')?.value || co.bank_name || '',
+    bank: document.getElementById('co-bank')?.value || co.bank || '',
+  };
   DB.update('companies', co.id, updates);
   AppState.currentCompany = { ...co, ...updates };
   DB.set('session_company', AppState.currentCompany);
-  toast('Société mise à jour', 'success');
+  toast('Informations de la société enregistrées', 'success');
+  navigate('parametres');
+}
+
+function uploadLogo(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('Logo trop lourd (max 2 Mo)', 'danger'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result;
+    const co = AppState.currentCompany;
+    localStorage.setItem('batigest_logo_' + co.id, base64);
+    // Mise à jour aperçu
+    const preview = document.getElementById('logo-preview');
+    if (preview) preview.innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:contain"/>`;
+    const headerLogo = document.getElementById('header-preview-logo');
+    if (headerLogo) headerLogo.innerHTML = `<img src="${base64}" style="width:100%;height:100%;object-fit:contain"/>`;
+    toast('Logo importé avec succès', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo() {
+  const co = AppState.currentCompany;
+  localStorage.removeItem('batigest_logo_' + co.id);
+  toast('Logo supprimé', 'success');
   navigate('parametres');
 }
 
