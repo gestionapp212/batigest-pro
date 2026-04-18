@@ -108,7 +108,9 @@ async function loadUserProfile(userId) {
   AppState.currentCompany = profile.companies || null;
 
   if (profile.role === 'super_admin') {
-    window.location.href = '/super-admin';
+    // Super admin ne peut pas accéder à l'app normale
+    await SB.signOut();
+    renderLoginPage('Ce compte est réservé au Super Admin. Accédez via /super-admin');
     return;
   }
 
@@ -136,7 +138,7 @@ async function doLogout() {
 }
 
 // ===== PAGE LOGIN =====
-function renderLoginPage() {
+function renderLoginPage(errorMsg = '') {
   document.getElementById('app-root').innerHTML = `
   <div id="login-page">
     <div class="login-left">
@@ -192,6 +194,10 @@ function renderLoginPage() {
             <i class="fas fa-sign-in-alt"></i> Se connecter
           </button>
         </form>
+        ${errorMsg ? `<div style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+          <i class="fas fa-exclamation-triangle" style="color:#dc2626;font-size:14px"></i>
+          <span style="font-size:12px;color:#dc2626">${errorMsg}</span>
+        </div>` : ''}
         <div style="background:var(--bg-main);border-radius:10px;padding:12px 14px;border:1px solid var(--border);display:flex;align-items:center;gap:10px">
           <i class="fas fa-info-circle" style="color:#2563eb;font-size:14px"></i>
           <span style="font-size:12px;color:var(--text-secondary)">Contactez votre administrateur pour obtenir vos identifiants de connexion.</span>

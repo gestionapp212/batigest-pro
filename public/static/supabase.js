@@ -2,8 +2,18 @@
 const SUPABASE_URL = 'https://zevqmvbfmaktjkrndytw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpldnFtdmJmbWFrdGprcm5keXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjcwNjQsImV4cCI6MjA5MjEwMzA2NH0.4YH-9kNBDONLqSiDJEutg1dpbRTV3b1uu_DO6WnjRxE';
 
-// Client Supabase léger (sans npm, via CDN)
-const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Clé de stockage différente selon la page pour isoler les sessions
+const _isSuperAdmin = window.location.pathname.includes('super-admin');
+const _storageKey = _isSuperAdmin ? 'sb-sa-auth' : 'sb-app-auth';
+
+// Client Supabase avec session isolée par page
+const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storageKey: _storageKey,
+    autoRefreshToken: true,
+    persistSession: true,
+  }
+});
 
 // ===== API WRAPPER =====
 const SB = {
