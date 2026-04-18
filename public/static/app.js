@@ -544,8 +544,9 @@ async function saveClient(id) {
     type: document.getElementById('cl-type').value,
     notes: document.getElementById('cl-notes').value,
   };
-  if (id) { await SB.update('clients', id, item); toast('Client modifié', 'success'); }
-  else { await SB.insert('clients', item); toast('Client créé', 'success'); }
+  const { error: ce } = id ? await SB.update('clients', id, item) : await SB.insert('clients', item);
+  if (ce) { toast('Erreur : ' + ce.message, 'danger'); return; }
+  toast(id ? 'Client modifié' : 'Client créé', 'success');
   closeModal(); navigate('clients');
 }
 
@@ -623,7 +624,7 @@ async function openDevisModal(id = null) {
         </select>
       </div>
       <div class="form-group"><label class="form-label">Date</label><input id="dv-date" type="date" class="form-input" value="${dv.date||new Date().toISOString().split('T')[0]}"/></div>
-      <div class="form-group"><label class="form-label">Validité</label><input id="dv-validite" type="date" class="form-input" value="${dv.validite||''}"/></div>
+      <div class="form-group"><label class="form-label">Validité</label><input id="dv-validite" type="date" class="form-input" value="${dv.date_validite||''}"/></div>
     </div>
     <div style="margin-bottom:16px">
       <label class="form-label">Lignes du devis</label>
@@ -688,15 +689,24 @@ async function saveDevis(id) {
     numero: document.getElementById('dv-num').value,
     client_id: clientEl.value,
     client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
-    date: document.getElementById('dv-date').value,
-    validite: document.getElementById('dv-validite').value,
+    date: document.getElementById('dv-date').value || null,
+    date_validite: document.getElementById('dv-validite').value || null,
     statut: id ? (document.getElementById('dv-statut')?.value||'en_attente') : 'en_attente',
     montant_ht: ht, tva, montant_ttc: ht*(1+tva/100),
-    lignes: JSON.stringify(lignes),
+    lignes: lignes,
     notes: document.getElementById('dv-notes').value,
   };
-  if (id) { await SB.update('devis', id, item); toast('Devis modifié', 'success'); }
-  else { await SB.insert('devis', item); toast('Devis créé', 'success'); }
+  const btn = document.querySelector('.modal-footer .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span> Enregistrement...'; }
+  if (id) {
+    const { error } = await SB.update('devis', id, item);
+    if (error) { toast('Erreur : ' + error.message, 'danger'); if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Enregistrer'; } return; }
+    toast('Devis modifié avec succès', 'success');
+  } else {
+    const { error } = await SB.insert('devis', item);
+    if (error) { toast('Erreur : ' + error.message, 'danger'); if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Créer le devis'; } return; }
+    toast('Devis créé avec succès', 'success');
+  }
   closeModal(); navigate('devis');
 }
 
@@ -709,12 +719,14 @@ async function convertToFacture(devisId) {
   if (!d) return;
   const { data: allFac } = await SB.getAll('factures', d.company_id);
   const num = genNum('FAC', allFac||[]);
-  await SB.insert('factures', {
+  const lignesData = typeof d.lignes==='string' ? JSON.parse(d.lignes||'[]') : (d.lignes||[]);
+  const { error: fe } = await SB.insert('factures', {
     company_id: d.company_id, numero: num, client_id: d.client_id, client_nom: d.client_nom,
-    date: new Date().toISOString().split('T')[0], echeance: '', statut: 'non_paye',
+    date: new Date().toISOString().split('T')[0], date_echeance: null, statut: 'non_paye',
     montant_ht: d.montant_ht, tva: d.tva, montant_ttc: d.montant_ttc, montant_paye: 0,
-    lignes: d.lignes,
+    lignes: lignesData,
   });
+  if (fe) { toast('Erreur création facture : ' + fe.message, 'danger'); return; }
   await SB.update('devis', devisId, { statut: 'accepte' });
   toast('Facture créée depuis le devis', 'success');
   navigate('factures');
@@ -788,7 +800,7 @@ async function renderFactures() {
           <td style="font-weight:700">${f.numero}</td>
           <td>${f.client_nom||'–'}</td>
           <td>${fmtDate(f.date)}</td>
-          <td style="color:${new Date(f.echeance)<new Date()&&f.statut!=='paye'?'#dc2626':'inherit'}">${fmtDate(f.echeance)}</td>
+          <td style="color:${new Date(f.date_echeance)<new Date()&&f.statut!=='paye'?'#dc2626':'inherit'}">${fmtDate(f.date_echeance)}</td>
           <td style="font-weight:700">${fmt(f.montant_ttc)}</td>
           <td style="color:#16a34a">${fmt(f.montant_paye)}</td>
           <td style="color:#dc2626;font-weight:600">${fmt(Number(f.montant_ttc)-Number(f.montant_paye))}</td>
@@ -835,7 +847,7 @@ async function openFactureModal(id = null) {
         </select>
       </div>
       <div class="form-group"><label class="form-label">Date facture</label><input id="fac-date" type="date" class="form-input" value="${fac.date||new Date().toISOString().split('T')[0]}"/></div>
-      <div class="form-group"><label class="form-label">Date échéance</label><input id="fac-echeance" type="date" class="form-input" value="${fac.echeance||''}"/></div>
+      <div class="form-group"><label class="form-label">Date échéance</label><input id="fac-echeance" type="date" class="form-input" value="${fac.date_echeance||''}"/></div>
     </div>
     <div style="margin-bottom:16px">
       <label class="form-label">Lignes</label>
@@ -897,16 +909,24 @@ async function saveFacture(id) {
     numero: document.getElementById('fac-num').value,
     client_id: clientEl.value,
     client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
-    date: document.getElementById('fac-date').value,
-    echeance: document.getElementById('fac-echeance').value,
+    date: document.getElementById('fac-date').value || null,
+    date_echeance: document.getElementById('fac-echeance').value || null,
     statut: id ? (document.getElementById('fac-statut')?.value||'non_paye') : 'non_paye',
     montant_ht: ht, tva, montant_ttc: ht*(1+tva/100),
-    montant_paye: id ? undefined : 0,
-    lignes: JSON.stringify(lignes),
+    montant_paye: 0,
+    lignes: lignes,
   };
-  if (!id) item.montant_paye = 0;
-  if (id) { await SB.update('factures', id, item); toast('Facture modifiée', 'success'); }
-  else { await SB.insert('factures', item); toast('Facture créée', 'success'); }
+  const btn2 = document.querySelector('.modal-footer .btn-primary');
+  if (btn2) { btn2.disabled = true; btn2.innerHTML = '<span class="loading-spinner"></span> Enregistrement...'; }
+  if (id) {
+    const { error } = await SB.update('factures', id, item);
+    if (error) { toast('Erreur : ' + error.message, 'danger'); if (btn2) { btn2.disabled=false; btn2.innerHTML='<i class="fas fa-save"></i> Enregistrer'; } return; }
+    toast('Facture modifiée avec succès', 'success');
+  } else {
+    const { error } = await SB.insert('factures', item);
+    if (error) { toast('Erreur : ' + error.message, 'danger'); if (btn2) { btn2.disabled=false; btn2.innerHTML='<i class="fas fa-save"></i> Créer'; } return; }
+    toast('Facture créée avec succès', 'success');
+  }
   closeModal(); navigate('factures');
 }
 
@@ -1085,8 +1105,9 @@ async function saveChantier(id) {
     statut: document.getElementById('ch-statut').value,
     description: document.getElementById('ch-desc').value,
   };
-  if (id) { await SB.update('chantiers', id, item); toast('Chantier modifié', 'success'); }
-  else { await SB.insert('chantiers', item); toast('Chantier créé', 'success'); }
+  const { error: che } = id ? await SB.update('chantiers', id, item) : await SB.insert('chantiers', item);
+  if (che) { toast('Erreur : ' + che.message, 'danger'); return; }
+  toast(id ? 'Chantier modifié' : 'Chantier créé', 'success');
   closeModal(); navigate('chantiers');
 }
 
@@ -1380,8 +1401,9 @@ async function saveProduit(id) {
   const name = document.getElementById('pr-name').value.trim();
   if (!name) { toast('Nom requis', 'danger'); return; }
   const item = { company_id: AppState.currentCompany.id, name, categorie: document.getElementById('pr-cat').value, unite: document.getElementById('pr-unite').value, stock_actuel: parseFloat(document.getElementById('pr-stock').value)||0, stock_min: parseFloat(document.getElementById('pr-min').value)||5, prix_achat: parseFloat(document.getElementById('pr-achat').value)||0, prix_vente: parseFloat(document.getElementById('pr-vente').value)||0 };
-  if (id) { await SB.update('produits', id, item); toast('Produit modifié', 'success'); }
-  else { await SB.insert('produits', item); toast('Produit créé', 'success'); }
+  const { error: pre } = id ? await SB.update('produits', id, item) : await SB.insert('produits', item);
+  if (pre) { toast('Erreur : ' + pre.message, 'danger'); return; }
+  toast(id ? 'Produit modifié' : 'Produit créé', 'success');
   closeModal(); navigate('stock');
 }
 
@@ -1468,8 +1490,9 @@ async function saveFournisseur(id) {
   const name = document.getElementById('fo-name').value.trim();
   if (!name) { toast('Nom requis', 'danger'); return; }
   const item = { company_id: AppState.currentCompany.id, name, categorie: document.getElementById('fo-cat').value, contact: document.getElementById('fo-contact').value, phone: document.getElementById('fo-phone').value, email: document.getElementById('fo-email').value, notes: document.getElementById('fo-notes').value };
-  if (id) { await SB.update('fournisseurs', id, item); toast('Fournisseur modifié', 'success'); }
-  else { await SB.insert('fournisseurs', item); toast('Fournisseur créé', 'success'); }
+  const { error: fre } = id ? await SB.update('fournisseurs', id, item) : await SB.insert('fournisseurs', item);
+  if (fre) { toast('Erreur : ' + fre.message, 'danger'); return; }
+  toast(id ? 'Fournisseur modifié' : 'Fournisseur créé', 'success');
   closeModal(); navigate('fournisseurs');
 }
 
@@ -1534,8 +1557,9 @@ async function saveAgenda(id) {
   const titre = document.getElementById('ag-titre').value.trim();
   if (!titre) { toast('Titre requis', 'danger'); return; }
   const item = { company_id: AppState.currentCompany.id, titre, date: document.getElementById('ag-date').value, heure: document.getElementById('ag-heure').value, type: document.getElementById('ag-type').value, notes: document.getElementById('ag-notes').value };
-  if (id) { await SB.update('agenda', id, item); toast('Événement modifié', 'success'); }
-  else { await SB.insert('agenda', item); toast('Événement créé', 'success'); }
+  const { error: ae } = id ? await SB.update('agenda', id, item) : await SB.insert('agenda', item);
+  if (ae) { toast('Erreur : ' + ae.message, 'danger'); return; }
+  toast(id ? 'Événement modifié' : 'Événement créé', 'success');
   closeModal(); navigate('agenda');
 }
 
