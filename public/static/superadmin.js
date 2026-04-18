@@ -367,6 +367,9 @@ async function renderSACompanies(content) {
                       onclick="toggleCompanyStatus('${co.id}','${co.status}')" title="${co.status === 'active' ? 'Suspendre' : 'Activer'}">
                       <i class="fas ${co.status === 'active' ? 'fa-ban' : 'fa-check'}"></i>
                     </button>
+                    <button class="btn btn-sm btn-info" onclick="linkUserToCompany('${co.id}','${co.name}')" title="Lier un utilisateur">
+                      <i class="fas fa-user-plus"></i>
+                    </button>
                     <button class="btn btn-sm btn-danger" onclick="deleteCompanySA('${co.id}')" title="Supprimer">
                       <i class="fas fa-trash"></i>
                     </button>
@@ -382,19 +385,28 @@ async function renderSACompanies(content) {
     </div>`;
 }
 
+function isValidUUID(id) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 async function toggleCompanyStatus(id, currentStatus) {
+  if (!isValidUUID(id)) { saToast('ID société invalide – supprimez cette société via SQL Supabase', 'danger'); return; }
   const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
   const { data, error } = await SB.updateCompany(id, { status: newStatus });
-  if (error) { saToast('Erreur lors de la mise à jour', 'danger'); return; }
+  if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
   saToast(`Société ${newStatus === 'active' ? 'activée' : 'suspendue'}`, 'success');
   await saNavigate('companies');
 }
 
 async function deleteCompanySA(id) {
-  saConfirm('Supprimer cette société et tous ses utilisateurs ?', async () => {
+  if (!isValidUUID(id)) { saToast('ID invalide – société non Supabase, supprimez-la via le SQL Editor', 'danger'); return; }
+  saConfirm('Supprimer définitivement cette société et tous ses utilisateurs ?', async () => {
+    // Supprimer d'abord les profils liés
+    const { error: pe } = await SB.deleteProfilesByCompany(id);
+    if (pe) { saToast('Erreur profils : ' + pe.message, 'danger'); return; }
     const { error } = await SB.deleteCompany(id);
-    if (error) { saToast('Erreur lors de la suppression : ' + error.message, 'danger'); return; }
-    saToast('Société supprimée', 'success');
+    if (error) { saToast('Erreur suppression : ' + error.message, 'danger'); return; }
+    saToast('Société supprimée avec succès', 'success');
     await saNavigate('companies');
   });
 }
@@ -446,6 +458,86 @@ async function saveEditCompany(id) {
   if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
   closeSaModal();
   saToast('Société mise à jour', 'success');
+  await saNavigate('companies');
+}
+
+// ========== LIER UTILISATEUR À SOCIÉTÉ ==========
+async function linkUserToCompany(companyId, companyName) {
+  if (!isValidUUID(companyId)) { saToast('ID société invalide', 'danger'); return; }
+  const { data: users } = await SB.getAllUsers();
+  const unlinked = (users || []).filter(u => !u.company_id && u.role !== 'super_admin');
+
+  saModal(`
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-user-plus" style="margin-right:8px;color:#2563eb"></i>Lier un utilisateur à ${companyName}</h3>
+      <button class="modal-close" onclick="closeSaModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">
+      Sélectionnez un utilisateur existant <b>sans société</b> à associer, ou créez un nouveau compte admin.
+    </p>
+    ${unlinked.length > 0 ? `
+    <div class="form-group">
+      <label class="form-label">Utilisateur existant sans société</label>
+      <select id="link-user-select" class="form-select">
+        <option value="">-- Sélectionner --</option>
+        ${unlinked.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Rôle</label>
+      <select id="link-user-role" class="form-select">
+        <option value="admin">Admin</option>
+        <option value="user">Utilisateur</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSaModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="doLinkUser('${companyId}')">
+        <i class="fas fa-link"></i> Lier cet utilisateur
+      </button>
+    </div>` : `
+    <div style="background:rgba(37,99,235,0.08);border-radius:10px;padding:14px;border:1px solid rgba(37,99,235,0.2);margin-bottom:16px">
+      <i class="fas fa-info-circle" style="color:#2563eb;margin-right:6px"></i>
+      <span style="font-size:13px;color:var(--text-secondary)">Tous les utilisateurs sont déjà liés à une société.</span>
+    </div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Créez un nouveau compte admin pour cette société :</p>
+    <div class="form-group"><label class="form-label">Nom <span class="req">*</span></label><input id="new-link-name" class="form-input" placeholder="Prénom Nom"/></div>
+    <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input id="new-link-email" type="email" class="form-input" placeholder="admin@societe.ma"/></div>
+    <div class="form-group"><label class="form-label">Mot de passe <span class="req">*</span></label><input id="new-link-pass" type="password" class="form-input" placeholder="Min. 6 caractères"/></div>
+    <div id="link-err" style="display:none;color:#dc2626;font-size:12px;margin-top:8px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSaModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="doCreateAndLink('${companyId}')">
+        <i class="fas fa-plus"></i> Créer et lier
+      </button>
+    </div>`}
+  `);
+}
+
+async function doLinkUser(companyId) {
+  const userId = document.getElementById('link-user-select').value;
+  const role = document.getElementById('link-user-role').value;
+  if (!userId) { saToast('Sélectionnez un utilisateur', 'warning'); return; }
+  const { error } = await SB.updateProfile(userId, { company_id: companyId, role });
+  if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
+  closeSaModal();
+  saToast('Utilisateur lié à la société avec succès !', 'success');
+  await saNavigate('companies');
+}
+
+async function doCreateAndLink(companyId) {
+  const name = document.getElementById('new-link-name')?.value?.trim();
+  const email = document.getElementById('new-link-email')?.value?.trim();
+  const pass = document.getElementById('new-link-pass')?.value;
+  const errEl = document.getElementById('link-err');
+  if (!name || !email || !pass) { errEl.textContent = 'Tous les champs sont requis'; errEl.style.display = 'block'; return; }
+  if (pass.length < 6) { errEl.textContent = 'Mot de passe trop court (min 6 car.)'; errEl.style.display = 'block'; return; }
+  const { data, error } = await SB.signUp(email, pass);
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+  const { error: pe } = await SB.createProfile({ id: data.user.id, company_id: companyId, name, email, role: 'admin', status: 'active' });
+  if (pe) { errEl.textContent = pe.message; errEl.style.display = 'block'; return; }
+  closeSaModal();
+  saToast(`Compte admin ${email} créé et lié !`, 'success');
   await saNavigate('companies');
 }
 

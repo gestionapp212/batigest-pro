@@ -87,6 +87,10 @@ const SB = {
     const { data, error } = await _supa.from('profiles').select('*').order('created_at', { ascending: false });
     return { data: data || [], error };
   },
+  async deleteProfilesByCompany(companyId) {
+    const { error } = await _supa.from('profiles').delete().eq('company_id', companyId);
+    return { error };
+  },
 
   // GENERIC CRUD (pour toutes les tables)
   async getAll(table, companyId) {
