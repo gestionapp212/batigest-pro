@@ -137,7 +137,16 @@ async function loadUserProfile(userId) {
 
 async function doLogin(email, password) {
   const { data, error } = await SB.signIn(email, password);
-  if (error) return { error: error.message };
+  if (error) {
+    // Message d'erreur clair en français
+    if (error.message.includes('Invalid login') || error.message.includes('invalid_credentials') || error.status === 400) {
+      return { error: 'Email ou mot de passe incorrect. Vérifiez vos identifiants.' };
+    }
+    if (error.message.includes('Email not confirmed')) {
+      return { error: 'Veuillez confirmer votre email avant de vous connecter.' };
+    }
+    return { error: 'Erreur de connexion. Réessayez dans quelques instants.' };
+  }
   await loadUserProfile(data.user.id);
   return { ok: true };
 }
@@ -234,7 +243,7 @@ function renderLoginPage(errorMsg = '') {
     btn.disabled = true;
     const result = await doLogin(email, password);
     if (result && result.error) {
-      document.getElementById('login-error-msg').textContent = result.error.includes('Invalid') ? 'Email ou mot de passe incorrect' : result.error;
+      document.getElementById('login-error-msg').textContent = result.error;
       errEl.style.display = 'block';
       btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
       btn.disabled = false;
