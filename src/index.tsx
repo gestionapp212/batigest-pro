@@ -35,10 +35,12 @@ function getMainHTML(): string {
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <link href="/static/style.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-  <div id="root"></div>
+  <div id="app-root"></div>
+  <script src="/static/supabase.js"></script>
   <script src="/static/pdf.js"></script>
   <script src="/static/app.js"></script>
 </body>
@@ -56,10 +58,12 @@ function getSuperAdminHTML(): string {
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <link href="/static/style.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-  <div id="root"></div>
+  <div id="sa-root"></div>
+  <script src="/static/supabase.js"></script>
   <script src="/static/superadmin.js"></script>
 </body>
 </html>`
