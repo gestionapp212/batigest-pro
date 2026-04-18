@@ -87,6 +87,19 @@ function statCard(label, val, icon, color, trend = 'up', sub = '') {
 // ===== AUTH =====
 async function initApp() {
   setTheme(AppState.theme);
+
+  // Nettoyer TOUTES les anciennes clés de session Supabase (migration localStorage)
+  // pour éviter les conflits de session entre app et super-admin
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('sb-') || key.startsWith('supabase.auth'))) {
+      // Garder seulement la clé de cette page
+      if (key !== 'sb-app-auth') keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+
   const session = await SB.getSession();
   if (session) {
     await loadUserProfile(session.user.id);

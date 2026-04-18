@@ -78,6 +78,16 @@ async function renderSA() {
   const root = document.getElementById('sa-root');
   if (!root) return;
 
+  // Nettoyer toutes les clés de session autres que celle du super-admin
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('sb-') || key.startsWith('supabase.auth'))) {
+      if (key !== 'sb-sa-auth') keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+
   // Vérifier session existante
   const session = await SB.getSession();
   if (session) {
