@@ -579,7 +579,7 @@ async function renderDevis() {
           <td style="font-weight:700">${d.numero}</td>
           <td>${d.client_nom||'–'}</td>
           <td>${fmtDate(d.date)}</td>
-          <td>${fmtDate(d.validite)}</td>
+          <td>${fmtDate(d.date_validite)}</td>
           <td>${fmt(d.montant_ht)}</td>
           <td style="font-weight:700">${fmt(d.montant_ttc)}</td>
           <td><span class="badge ${stMap[d.statut]||'badge-secondary'}">${stLabel[d.statut]||d.statut}</span></td>
@@ -748,7 +748,7 @@ async function previewDevis(id) {
         <div><div style="font-size:11px;color:var(--text-secondary)">CLIENT</div><div style="font-weight:700">${d.client_nom}</div></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">STATUT</div><span class="badge ${stMap[d.statut]||'badge-secondary'}">${stLabel[d.statut]||d.statut}</span></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">DATE</div><div>${fmtDate(d.date)}</div></div>
-        <div><div style="font-size:11px;color:var(--text-secondary)">VALIDITÉ</div><div>${fmtDate(d.validite)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-secondary)">VALIDITÉ</div><div>${fmtDate(d.date_validite)}</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--primary);color:#fff">
@@ -951,7 +951,7 @@ async function previewFacture(id) {
         <div><div style="font-size:11px;color:var(--text-secondary)">CLIENT</div><div style="font-weight:700">${f.client_nom}</div></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">STATUT</div><span class="badge ${stMap[f.statut]||'badge-secondary'}">${stLabel[f.statut]||f.statut}</span></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">DATE</div><div>${fmtDate(f.date)}</div></div>
-        <div><div style="font-size:11px;color:var(--text-secondary)">ÉCHÉANCE</div><div>${fmtDate(f.echeance)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-secondary)">ÉCHÉANCE</div><div>${fmtDate(f.date_echeance)}</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--primary);color:#fff">
