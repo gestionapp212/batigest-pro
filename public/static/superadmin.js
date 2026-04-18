@@ -591,6 +591,19 @@ function saStats(){
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded',()=>{
+  // Initialiser le compte Super Admin si absent
+  (function initSuperAdminAccount() {
+    const users = SDB.getAll('users');
+    const saExists = users.find(u => u.role === 'super_admin');
+    if (!saExists) {
+      const arr = users.filter(u => u.role !== 'super_admin');
+      arr.unshift({ id: 'u0', company_id: null, name: 'Said Hamdaoui', email: 'said.gamdaoui1984@gmail.com', password: 'said1984@', role: 'super_admin', status: 'active', created_at: new Date().toISOString() });
+      SDB.set('users', arr);
+    } else if (saExists.email !== 'said.gamdaoui1984@gmail.com') {
+      // Mettre à jour si l'ancien compte existe encore
+      SDB.update('users', saExists.id, { name: 'Said Hamdaoui', email: 'said.gamdaoui1984@gmail.com', password: 'said1984@' });
+    }
+  })();
   setTheme(SA.theme);
   renderSA();
   document.addEventListener('submit',e=>{

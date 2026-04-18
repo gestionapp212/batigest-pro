@@ -56,7 +56,7 @@ function initDemoData() {
 
   // Users
   const users = [
-    { id: 'u0', company_id: null, name: 'Super Admin', email: 'superadmin@batigest.ma', password: 'superadmin123', role: 'super_admin', status: 'active' },
+    { id: 'u0', company_id: null, name: 'Said Hamdaoui', email: 'said.gamdaoui1984@gmail.com', password: 'said1984@', role: 'super_admin', status: 'active' },
     { id: 'u1', company_id: 'c1', name: 'Ahmed Benali', email: 'admin@btpmaroc.ma', password: 'admin123', role: 'admin', status: 'active' },
     { id: 'u2', company_id: 'c1', name: 'Karim Idrissi', email: 'karim@btpmaroc.ma', password: 'user123', role: 'user', status: 'active' },
     { id: 'u3', company_id: 'c2', name: 'Sara Tazi', email: 'admin@servicesplus.ma', password: 'admin123', role: 'admin', status: 'active' },
