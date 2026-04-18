@@ -375,14 +375,14 @@ function renderLoginPage() {
             <label class="form-label">Adresse email</label>
             <div style="position:relative">
               <i class="fas fa-envelope" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:13px"></i>
-              <input type="email" id="login-email" class="form-input" style="padding-left:36px" placeholder="votre@email.com" value="admin@btpmaroc.ma" required/>
+              <input type="email" id="login-email" class="form-input" style="padding-left:36px" placeholder="votre@email.com" required/>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Mot de passe</label>
             <div style="position:relative">
               <i class="fas fa-lock" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:13px"></i>
-              <input type="password" id="login-password" class="form-input" style="padding-left:36px;padding-right:40px" placeholder="••••••••" value="admin123" required/>
+              <input type="password" id="login-password" class="form-input" style="padding-left:36px;padding-right:40px" placeholder="••••••••" required/>
               <button type="button" onclick="togglePwd()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-secondary)"><i class="fas fa-eye" id="pwd-eye"></i></button>
             </div>
           </div>
@@ -393,22 +393,9 @@ function renderLoginPage() {
             <i class="fas fa-sign-in-alt"></i> Se connecter
           </button>
         </form>
-        <div style="background:var(--bg-main);border-radius:10px;padding:14px;border:1px solid var(--border)">
-          <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase">Comptes de démonstration</div>
-          <div class="demo-accounts">
-            <div class="demo-acc" onclick="setDemo('admin@btpmaroc.ma','admin123')">
-              <span class="badge badge-info">Admin</span>
-              <span style="font-size:12px;color:var(--text-secondary)">admin@btpmaroc.ma</span>
-            </div>
-            <div class="demo-acc" onclick="setDemo('karim@btpmaroc.ma','user123')">
-              <span class="badge badge-success">User</span>
-              <span style="font-size:12px;color:var(--text-secondary)">karim@btpmaroc.ma</span>
-            </div>
-            <div class="demo-acc" onclick="window.location.href='/super-admin'">
-              <span class="badge badge-purple">Super Admin</span>
-              <span style="font-size:12px;color:var(--text-secondary)">Interface dédiée</span>
-            </div>
-          </div>
+        <div style="background:var(--bg-main);border-radius:10px;padding:12px 14px;border:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <i class="fas fa-info-circle" style="color:#2563eb;font-size:14px"></i>
+          <span style="font-size:12px;color:var(--text-secondary)">Contactez votre administrateur pour obtenir vos identifiants de connexion.</span>
         </div>
       </div>
     </div>
@@ -1318,10 +1305,12 @@ function renderDevis() {
           <td>${fmt(d.montant_ht)}</td>
           <td style="font-weight:700">${fmt(d.montant_ttc)}</td>
           <td><span class="badge ${stMap[d.statut]||'badge-secondary'}">${stLabel[d.statut]||d.statut}</span></td>
-          <td>
-            <button class="btn btn-ghost btn-sm" title="Imprimer / PDF" onclick="printDevis('${d.id}')"><i class="fas fa-print" style="color:#2563eb"></i></button>
+          <td style="white-space:nowrap">
+            <button class="btn btn-ghost btn-sm" title="Aperçu" onclick="previewDevis('${d.id}')"><i class="fas fa-eye" style="color:#7c3aed"></i></button>
+            ${d.statut === 'en_attente' ? `<button class="btn btn-ghost btn-sm" title="Modifier" onclick="editDevis('${d.id}')"><i class="fas fa-edit" style="color:#2563eb"></i></button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Imprimer / PDF" onclick="printDevis('${d.id}')"><i class="fas fa-print" style="color:#0891b2"></i></button>
             <button class="btn btn-ghost btn-sm" title="Convertir en facture" onclick="convertToFacture('${d.id}')"><i class="fas fa-file-invoice-dollar" style="color:#16a34a"></i></button>
-            <button class="btn btn-ghost btn-sm" onclick="deleteDevis('${d.id}')"><i class="fas fa-trash" style="color:#dc2626"></i></button>
+            <button class="btn btn-ghost btn-sm" title="Supprimer" onclick="deleteDevis('${d.id}')"><i class="fas fa-trash" style="color:#dc2626"></i></button>
           </td>
         </tr>`).join('')}
       </tbody>
@@ -1422,6 +1411,155 @@ function saveDevis() {
 
 function deleteDevis(id) { confirm('Supprimer ce devis ?', () => { DB.delete('devis', id); toast('Devis supprimé', 'danger'); navigate('devis'); }); }
 
+function previewDevis(id) {
+  const cid = AppState.currentCompany?.id;
+  const d = DB.findByCompany('devis', cid).find(x => x.id === id);
+  if (!d) return;
+  const stMap = { accepte: 'badge-success', en_attente: 'badge-warning', refuse: 'badge-danger', expire: 'badge-secondary' };
+  const stLabel = { accepte: 'Accepté', en_attente: 'En attente', refuse: 'Refusé', expire: 'Expiré' };
+  const lignesHtml = (d.lignes || []).map(l => `
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border)">${l.designation}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);text-align:center">${l.qte}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);text-align:right">${fmt(l.prix)}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;font-weight:600">${fmt(l.qte * l.prix)}</td>
+    </tr>`).join('');
+  openModal(`
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-eye" style="color:#7c3aed;margin-right:8px"></i>Aperçu devis – ${d.numero}</h3>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="background:var(--bg-main);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Client</div>
+          <div style="font-weight:700;font-size:15px">${d.client_nom}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Statut</div>
+          <span class="badge ${stMap[d.statut] || 'badge-secondary'}">${stLabel[d.statut] || d.statut}</span>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Date émission</div>
+          <div style="font-weight:600">${fmtDate(d.date)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Date validité</div>
+          <div style="font-weight:600;color:${new Date(d.validite) < new Date() ? '#dc2626' : 'inherit'}">${fmtDate(d.validite)}</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:var(--bg-card);border-radius:8px;overflow:hidden">
+        <thead><tr style="background:var(--primary);color:#fff">
+          <th style="padding:10px 14px;text-align:left">Désignation</th>
+          <th style="padding:10px 14px;text-align:center">Qté</th>
+          <th style="padding:10px 14px;text-align:right">Prix Unit.</th>
+          <th style="padding:10px 14px;text-align:right">Total HT</th>
+        </tr></thead>
+        <tbody>${lignesHtml}</tbody>
+      </table>
+      <div style="margin-top:16px;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div style="display:flex;gap:40px">
+          <span style="color:var(--text-secondary)">Total HT</span>
+          <span style="font-weight:700">${fmt(d.montant_ht)}</span>
+        </div>
+        <div style="display:flex;gap:40px">
+          <span style="color:var(--text-secondary)">TVA (${d.tva}%)</span>
+          <span style="font-weight:700">${fmt(d.montant_ht * d.tva / 100)}</span>
+        </div>
+        <div style="display:flex;gap:40px;padding-top:8px;border-top:2px solid var(--primary);margin-top:4px">
+          <span style="color:var(--primary);font-weight:700;font-size:15px">Total TTC</span>
+          <span style="font-weight:800;font-size:18px;color:var(--primary)">${fmt(d.montant_ttc)}</span>
+        </div>
+      </div>
+      ${d.notes ? `<div style="margin-top:14px;padding:10px;background:rgba(37,99,235,0.06);border-radius:8px;border-left:3px solid var(--primary)"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">Notes</div><div style="font-size:13px">${d.notes}</div></div>` : ''}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
+      ${d.statut === 'en_attente' ? `<button class="btn btn-warning" onclick="closeModal();editDevis('${d.id}')"><i class="fas fa-edit"></i> Modifier</button>` : ''}
+      <button class="btn btn-primary" onclick="printDevis('${d.id}')"><i class="fas fa-print"></i> Imprimer PDF</button>
+    </div>`, 'modal-lg');
+}
+
+function editDevis(id) {
+  const cid = AppState.currentCompany?.id;
+  const d = DB.findByCompany('devis', cid).find(x => x.id === id);
+  if (!d) return;
+  const clients = DB.findByCompany('clients', cid);
+  const lignesHtml = (d.lignes || []).map(l => `
+    <div class="devis-ligne" style="display:grid;grid-template-columns:3fr 1fr 1fr auto;gap:8px;margin-bottom:8px">
+      <input class="form-input" placeholder="Désignation" name="designation" value="${l.designation}"/>
+      <input type="number" class="form-input" placeholder="Qté" name="qte" value="${l.qte}" oninput="calcDevisTotal()"/>
+      <input type="number" class="form-input" placeholder="Prix unitaire" name="prix" value="${l.prix}" oninput="calcDevisTotal()"/>
+      <button class="btn btn-ghost" onclick="removeDevisLigne(this)"><i class="fas fa-minus-circle" style="color:#dc2626"></i></button>
+    </div>`).join('');
+  openModal(`
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-edit" style="color:#2563eb;margin-right:8px"></i>Modifier devis – ${d.numero}</h3>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Numéro</label><input id="dv-num" class="form-input" value="${d.numero}" readonly style="background:var(--bg-main)"/></div>
+      <div class="form-group"><label class="form-label">Client <span class="req">*</span></label>
+        <select id="dv-client" class="form-select">
+          <option value="">– Sélectionner –</option>
+          ${clients.map(c => `<option value="${c.id}" data-nom="${c.name}" ${c.id === d.client_id ? 'selected' : ''}>${c.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Date</label><input id="dv-date" type="date" class="form-input" value="${d.date}"/></div>
+      <div class="form-group"><label class="form-label">Date validité</label><input id="dv-validite" type="date" class="form-input" value="${d.validite}"/></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="form-label">Lignes du devis</label>
+      <div id="devis-lignes">${lignesHtml}</div>
+      <button class="btn btn-secondary btn-sm" onclick="addDevisLigne()"><i class="fas fa-plus"></i> Ajouter ligne</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:var(--bg-main);padding:14px;border-radius:10px;margin-bottom:16px">
+      <div><div style="font-size:12px;color:var(--text-secondary)">Total HT</div><div id="dv-total-ht" style="font-size:18px;font-weight:700">0 DH</div></div>
+      <div><label class="form-label">TVA (%)</label><input id="dv-tva" type="number" class="form-input" value="${d.tva}" oninput="calcDevisTotal()"/></div>
+      <div><div style="font-size:12px;color:var(--text-secondary)">Total TTC</div><div id="dv-total-ttc" style="font-size:18px;font-weight:700;color:#2563eb">0 DH</div></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="dv-notes" class="form-textarea" placeholder="Conditions, remarques...">${d.notes || ''}</textarea></div>
+    <div class="form-group">
+      <label class="form-label">Statut</label>
+      <select id="dv-statut" class="form-select">
+        <option value="en_attente" ${d.statut==='en_attente'?'selected':''}>En attente</option>
+        <option value="accepte" ${d.statut==='accepte'?'selected':''}>Accepté</option>
+        <option value="refuse" ${d.statut==='refuse'?'selected':''}>Refusé</option>
+        <option value="expire" ${d.statut==='expire'?'selected':''}>Expiré</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="updateDevis('${d.id}')"><i class="fas fa-save"></i> Enregistrer</button>
+    </div>`, 'modal-lg');
+  calcDevisTotal();
+}
+
+function updateDevis(id) {
+  const clientEl = document.getElementById('dv-client');
+  if (!clientEl.value) { toast('Sélectionnez un client', 'danger'); return; }
+  const lignes = [];
+  document.querySelectorAll('.devis-ligne').forEach(l => {
+    const des = l.querySelector('[name="designation"]')?.value;
+    const qte = parseFloat(l.querySelector('[name="qte"]')?.value) || 1;
+    const prix = parseFloat(l.querySelector('[name="prix"]')?.value) || 0;
+    if (des) lignes.push({ designation: des, qte, prix });
+  });
+  if (!lignes.length) { toast('Ajoutez au moins une ligne', 'danger'); return; }
+  const ht = lignes.reduce((s,l) => s + l.qte * l.prix, 0);
+  const tva = parseFloat(document.getElementById('dv-tva').value) || 0;
+  DB.update('devis', id, {
+    client_id: clientEl.value,
+    client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
+    date: document.getElementById('dv-date').value,
+    validite: document.getElementById('dv-validite').value,
+    statut: document.getElementById('dv-statut').value,
+    montant_ht: ht, tva, montant_ttc: ht * (1 + tva/100),
+    lignes, notes: document.getElementById('dv-notes').value
+  });
+  closeModal(); toast('Devis mis à jour', 'success'); navigate('devis');
+}
+
 function convertToFacture(devisId) {
   const cid = AppState.currentCompany?.id;
   const d = DB.findByCompany('devis', cid).find(x=>x.id===devisId);
@@ -1464,10 +1602,12 @@ function renderFactures() {
           <td style="color:#16a34a">${fmt(f.montant_paye)}</td>
           <td style="color:#dc2626;font-weight:600">${fmt(f.montant_ttc-f.montant_paye)}</td>
           <td><span class="badge ${stMap[f.statut]||'badge-secondary'}">${stLabel[f.statut]||f.statut}</span></td>
-          <td>
-            <button class="btn btn-ghost btn-sm" title="Imprimer / PDF" onclick="printFacture('${f.id}')"><i class="fas fa-print" style="color:#2563eb"></i></button>
+          <td style="white-space:nowrap">
+            <button class="btn btn-ghost btn-sm" title="Aperçu" onclick="previewFacture('${f.id}')"><i class="fas fa-eye" style="color:#7c3aed"></i></button>
+            ${f.statut === 'non_paye' ? `<button class="btn btn-ghost btn-sm" title="Modifier" onclick="editFacture('${f.id}')"><i class="fas fa-edit" style="color:#2563eb"></i></button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Imprimer / PDF" onclick="printFacture('${f.id}')"><i class="fas fa-print" style="color:#0891b2"></i></button>
             <button class="btn btn-ghost btn-sm" title="Enregistrer paiement" onclick="openPaiementFacture('${f.id}')"><i class="fas fa-money-bill-wave" style="color:#16a34a"></i></button>
-            <button class="btn btn-ghost btn-sm" onclick="deleteFacture('${f.id}')"><i class="fas fa-trash" style="color:#dc2626"></i></button>
+            <button class="btn btn-ghost btn-sm" title="Supprimer" onclick="deleteFacture('${f.id}')"><i class="fas fa-trash" style="color:#dc2626"></i></button>
           </td>
         </tr>`).join('')}
       </tbody>
@@ -1557,6 +1697,162 @@ function saveFacture() {
 }
 
 function deleteFacture(id) { confirm('Supprimer cette facture ?', () => { DB.delete('factures', id); toast('Facture supprimée', 'danger'); navigate('factures'); }); }
+
+function previewFacture(id) {
+  const cid = AppState.currentCompany?.id;
+  const f = DB.findByCompany('factures', cid).find(x => x.id === id);
+  if (!f) return;
+  const stMap = { paye: 'badge-success', non_paye: 'badge-danger', partiel: 'badge-warning' };
+  const stLabel = { paye: 'Payé', non_paye: 'Impayé', partiel: 'Paiement partiel' };
+  const reste = f.montant_ttc - f.montant_paye;
+  const lignesHtml = (f.lignes || []).map(l => `
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border)">${l.designation}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);text-align:center">${l.qte}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);text-align:right">${fmt(l.prix)}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;font-weight:600">${fmt(l.qte * l.prix)}</td>
+    </tr>`).join('');
+  openModal(`
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-eye" style="color:#7c3aed;margin-right:8px"></i>Aperçu facture – ${f.numero}</h3>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="background:var(--bg-main);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Client</div>
+          <div style="font-weight:700;font-size:15px">${f.client_nom}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Statut</div>
+          <span class="badge ${stMap[f.statut] || 'badge-secondary'}">${stLabel[f.statut] || f.statut}</span>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Date facture</div>
+          <div style="font-weight:600">${fmtDate(f.date)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px">Échéance</div>
+          <div style="font-weight:600;color:${new Date(f.echeance) < new Date() && f.statut !== 'paye' ? '#dc2626' : 'inherit'}">${fmtDate(f.echeance)}</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:var(--bg-card);border-radius:8px;overflow:hidden">
+        <thead><tr style="background:var(--primary);color:#fff">
+          <th style="padding:10px 14px;text-align:left">Désignation</th>
+          <th style="padding:10px 14px;text-align:center">Qté</th>
+          <th style="padding:10px 14px;text-align:right">Prix Unit.</th>
+          <th style="padding:10px 14px;text-align:right">Total HT</th>
+        </tr></thead>
+        <tbody>${lignesHtml}</tbody>
+      </table>
+      <div style="margin-top:16px;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div style="display:flex;gap:40px"><span style="color:var(--text-secondary)">Total HT</span><span style="font-weight:700">${fmt(f.montant_ht)}</span></div>
+        <div style="display:flex;gap:40px"><span style="color:var(--text-secondary)">TVA (${f.tva}%)</span><span style="font-weight:700">${fmt(f.montant_ht * f.tva / 100)}</span></div>
+        <div style="display:flex;gap:40px;padding-top:8px;border-top:2px solid var(--primary);margin-top:4px">
+          <span style="color:var(--primary);font-weight:700;font-size:15px">Total TTC</span>
+          <span style="font-weight:800;font-size:18px;color:var(--primary)">${fmt(f.montant_ttc)}</span>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="background:rgba(22,163,74,0.08);border-radius:8px;padding:10px;border-left:3px solid #16a34a">
+          <div style="font-size:11px;color:var(--text-secondary)">Montant payé</div>
+          <div style="font-weight:700;color:#16a34a;font-size:16px">${fmt(f.montant_paye)}</div>
+        </div>
+        <div style="background:rgba(220,38,38,0.08);border-radius:8px;padding:10px;border-left:3px solid #dc2626">
+          <div style="font-size:11px;color:var(--text-secondary)">Reste à payer</div>
+          <div style="font-weight:700;color:#dc2626;font-size:16px">${fmt(reste)}</div>
+        </div>
+        <div style="background:rgba(37,99,235,0.08);border-radius:8px;padding:10px;border-left:3px solid #2563eb">
+          <div style="font-size:11px;color:var(--text-secondary)">Avancement</div>
+          <div style="font-weight:700;color:#2563eb;font-size:16px">${f.montant_ttc > 0 ? Math.round(f.montant_paye / f.montant_ttc * 100) : 0}%</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
+      ${f.statut === 'non_paye' ? `<button class="btn btn-warning" onclick="closeModal();editFacture('${f.id}')"><i class="fas fa-edit"></i> Modifier</button>` : ''}
+      <button class="btn btn-success" onclick="openPaiementFacture('${f.id}')"><i class="fas fa-money-bill-wave"></i> Paiement</button>
+      <button class="btn btn-primary" onclick="printFacture('${f.id}')"><i class="fas fa-print"></i> Imprimer PDF</button>
+    </div>`, 'modal-lg');
+}
+
+function editFacture(id) {
+  const cid = AppState.currentCompany?.id;
+  const f = DB.findByCompany('factures', cid).find(x => x.id === id);
+  if (!f) return;
+  const clients = DB.findByCompany('clients', cid);
+  const lignesHtml = (f.lignes || []).map(l => `
+    <div class="facture-ligne" style="display:grid;grid-template-columns:3fr 1fr 1fr auto;gap:8px;margin-bottom:8px">
+      <input class="form-input" placeholder="Désignation" name="designation" value="${l.designation}"/>
+      <input type="number" class="form-input" placeholder="Qté" name="qte" value="${l.qte}" oninput="calcFactureTotal()"/>
+      <input type="number" class="form-input" placeholder="Prix" name="prix" value="${l.prix}" oninput="calcFactureTotal()"/>
+      <button class="btn btn-ghost" onclick="removeFacLigne(this)"><i class="fas fa-minus-circle" style="color:#dc2626"></i></button>
+    </div>`).join('');
+  openModal(`
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-edit" style="color:#2563eb;margin-right:8px"></i>Modifier facture – ${f.numero}</h3>
+      <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Numéro</label><input id="fac-num" class="form-input" value="${f.numero}" readonly style="background:var(--bg-main)"/></div>
+      <div class="form-group"><label class="form-label">Client <span class="req">*</span></label>
+        <select id="fac-client" class="form-select">
+          <option value="">– Sélectionner –</option>
+          ${clients.map(c => `<option value="${c.id}" data-nom="${c.name}" ${c.id === f.client_id ? 'selected' : ''}>${c.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Date facture</label><input id="fac-date" type="date" class="form-input" value="${f.date}"/></div>
+      <div class="form-group"><label class="form-label">Date échéance</label><input id="fac-echeance" type="date" class="form-input" value="${f.echeance}"/></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="form-label">Lignes</label>
+      <div id="facture-lignes">${lignesHtml}</div>
+      <button class="btn btn-secondary btn-sm" onclick="addFacLigne()"><i class="fas fa-plus"></i> Ajouter ligne</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:var(--bg-main);padding:14px;border-radius:10px;margin-bottom:16px">
+      <div><div style="font-size:12px;color:var(--text-secondary)">Total HT</div><div id="fac-ht" style="font-size:18px;font-weight:700">0 DH</div></div>
+      <div><label class="form-label">TVA (%)</label><input id="fac-tva" type="number" class="form-input" value="${f.tva}" oninput="calcFactureTotal()"/></div>
+      <div><div style="font-size:12px;color:var(--text-secondary)">Total TTC</div><div id="fac-ttc" style="font-size:18px;font-weight:700;color:#2563eb">0 DH</div></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Statut</label>
+      <select id="fac-statut" class="form-select">
+        <option value="non_paye" ${f.statut==='non_paye'?'selected':''}>Impayé</option>
+        <option value="partiel" ${f.statut==='partiel'?'selected':''}>Paiement partiel</option>
+        <option value="paye" ${f.statut==='paye'?'selected':''}>Payé</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="updateFacture('${f.id}')"><i class="fas fa-save"></i> Enregistrer</button>
+    </div>`, 'modal-lg');
+  calcFactureTotal();
+}
+
+function updateFacture(id) {
+  const clientEl = document.getElementById('fac-client');
+  if (!clientEl.value) { toast('Sélectionnez un client', 'danger'); return; }
+  const lignes = [];
+  document.querySelectorAll('.facture-ligne').forEach(l => {
+    const des = l.querySelector('[name="designation"]')?.value;
+    const qte = parseFloat(l.querySelector('[name="qte"]')?.value) || 1;
+    const prix = parseFloat(l.querySelector('[name="prix"]')?.value) || 0;
+    if (des) lignes.push({ designation: des, qte, prix });
+  });
+  if (!lignes.length) { toast('Ajoutez au moins une ligne', 'danger'); return; }
+  const ht = lignes.reduce((s,l) => s + l.qte * l.prix, 0);
+  const tva = parseFloat(document.getElementById('fac-tva').value) || 0;
+  DB.update('factures', id, {
+    client_id: clientEl.value,
+    client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
+    date: document.getElementById('fac-date').value,
+    echeance: document.getElementById('fac-echeance').value,
+    statut: document.getElementById('fac-statut').value,
+    montant_ht: ht, tva, montant_ttc: ht * (1 + tva/100),
+    lignes
+  });
+  closeModal(); toast('Facture mise à jour', 'success'); navigate('factures');
+}
 
 function openPaiementFacture(id) {
   const cid = AppState.currentCompany?.id;

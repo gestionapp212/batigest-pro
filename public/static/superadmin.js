@@ -170,11 +170,11 @@ function renderSALogin(){
         <form id="sa-login-form">
           <div class="form-group">
             <label class="form-label">Email</label>
-            <input type="email" id="sa-email" class="form-input" value="superadmin@batigest.ma" required/>
+            <input type="email" id="sa-email" class="form-input" placeholder="Email administrateur" required/>
           </div>
           <div class="form-group">
             <label class="form-label">Mot de passe</label>
-            <input type="password" id="sa-pass" class="form-input" value="superadmin123" required/>
+            <input type="password" id="sa-pass" class="form-input" placeholder="••••••••" required/>
           </div>
           <div id="sa-error" style="display:none;color:#dc2626;font-size:13px;margin-bottom:12px;padding:10px;background:rgba(220,38,38,0.08);border-radius:8px">
             Identifiants incorrects
@@ -183,8 +183,9 @@ function renderSALogin(){
             <i class="fas fa-shield-alt"></i> Accéder
           </button>
         </form>
-        <div style="margin-top:16px;padding:12px;background:var(--bg-main);border-radius:8px;font-size:12px;color:var(--text-secondary)">
-          <strong>Démo :</strong> superadmin@batigest.ma / superadmin123
+        <div style="margin-top:16px;padding:12px;background:var(--bg-main);border-radius:8px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px">
+          <i class="fas fa-lock" style="color:#7c3aed"></i>
+          Accès réservé aux administrateurs de la plateforme.
         </div>
       </div>
     </div>
