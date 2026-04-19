@@ -14,21 +14,90 @@ function pdfFmtDateShort(d) {
   return new Date(d).toLocaleDateString('fr-FR');
 }
 
-// Récupère le logo de la société (base64 stocké en localStorage)
+// Récupère le logo de la société (base64 stocké en localStorage ou dans la DB)
 function getCompanyLogo(company) {
-  const logo = localStorage.getItem('batigest_logo_' + company.id);
-  return logo || null;
+  if (!company) return null;
+  // Priorité : localStorage (modifié dans les params), puis champ logo de la DB
+  return localStorage.getItem('batigest_logo_' + company.id) || company.logo || null;
+}
+
+// Récupère les paramètres PDF sauvegardés
+function getPdfStyle() {
+  try { return JSON.parse(localStorage.getItem('batigest_pdf_style') || '{}'); } catch { return {}; }
+}
+
+// ===== MONTANT EN LETTRES (Français/Maroc) =====
+function nombreEnLettres(n) {
+  const num = Math.round(Number(n) * 100);
+  const dh = Math.floor(num / 100);
+  const cents = num % 100;
+  const unites = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+    'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+  const dizaines = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+
+  function centaines(n) {
+    if (n === 0) return '';
+    if (n < 20) return unites[n];
+    const d = Math.floor(n / 10);
+    const u = n % 10;
+    if (d === 7) return 'soixante-' + (u === 1 ? 'et-onze' : unites[10 + u]);
+    if (d === 9) return 'quatre-vingt-' + (u === 0 ? 's' : unites[u]);
+    const sep = (u === 1 && d < 8) ? '-et-' : (u > 0 ? '-' : '');
+    return dizaines[d] + (u === 0 && d === 8 ? 's' : '') + (u > 0 ? sep + unites[u] : '');
+  }
+  function convert(n) {
+    if (n === 0) return 'zéro';
+    let res = '';
+    if (n >= 1000000) { res += convert(Math.floor(n/1000000)) + ' million' + (Math.floor(n/1000000) > 1 ? 's' : '') + ' '; n %= 1000000; }
+    if (n >= 1000) {
+      const m = Math.floor(n/1000);
+      res += (m === 1 ? 'mille' : convert(m) + ' mille') + ' '; n %= 1000;
+    }
+    if (n >= 100) {
+      const c = Math.floor(n/100);
+      res += (c === 1 ? 'cent' : unites[c] + ' cent') + (n % 100 === 0 && c > 1 ? 's' : '') + ' '; n %= 100;
+    }
+    if (n > 0) res += centaines(n);
+    return res.trim().replace(/\s+/g, ' ');
+  }
+
+  let result = convert(dh) + ' dirham' + (dh > 1 ? 's' : '');
+  if (cents > 0) result += ' et ' + convert(cents) + ' centime' + (cents > 1 ? 's' : '');
+  // Capitaliser première lettre
+  return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
 // ===== STYLES CSS COMMUNS POUR TOUS LES PDF =====
-function getPdfBaseStyles() {
+function getPdfBaseStyles(pdfStyle) {
+  const s = pdfStyle || getPdfStyle();
+  const primaryColor = s.color || '#2563eb';
+  const font = s.font || 'Inter';
+  const docStyle = s.style || 'moderne';
+
+  // Couleurs dérivées de la couleur principale
+  const headerBg = docStyle === 'minimaliste' ? '#f8fafc' : (docStyle === 'classique' ? '#1e3a5f' : '#1e293b');
+  const headerColor = docStyle === 'minimaliste' ? primaryColor : '#fff';
+  const bandGradient = `linear-gradient(90deg, ${primaryColor}, ${primaryColor}99, #06b6d4)`;
+  const accentColor = primaryColor;
+
+  const fontImport = font === 'Inter' ? `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');`
+    : font === 'Georgia' ? '' // Georgia est une police système
+    : ''; // Arial, Courier New = polices système
+
   return `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    ${fontImport}
     
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
+    :root {
+      --pdf-primary: ${primaryColor};
+      --pdf-header-bg: ${headerBg};
+      --pdf-header-color: ${headerColor};
+      --pdf-accent: ${accentColor};
+    }
+    
     body {
-      font-family: 'Inter', 'Segoe UI', sans-serif;
+      font-family: '${font}', 'Segoe UI', sans-serif;
       background: #fff;
       color: #1e293b;
       font-size: 13px;
@@ -47,15 +116,16 @@ function getPdfBaseStyles() {
 
     /* ===== EN-TÊTE ===== */
     .pdf-header {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      color: #fff;
-      padding: 32px 36px 28px;
+      background: ${docStyle === 'minimaliste' ? '#f8fafc' : `linear-gradient(135deg, ${headerBg} 0%, ${headerBg}ee 100%)`};
+      color: ${headerColor};
+      padding: ${docStyle === 'minimaliste' ? '24px 36px' : '32px 36px 28px'};
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 24px;
       position: relative;
       overflow: hidden;
+      ${docStyle === 'minimaliste' ? `border-bottom: 3px solid ${primaryColor};` : ''}
     }
 
     .pdf-header::before {
@@ -64,7 +134,8 @@ function getPdfBaseStyles() {
       top: -40px; right: -40px;
       width: 180px; height: 180px;
       border-radius: 50%;
-      background: rgba(37,99,235,0.15);
+      background: rgba(255,255,255,0.08);
+      ${docStyle === 'minimaliste' ? 'display:none;' : ''}
     }
     .pdf-header::after {
       content: '';
@@ -72,7 +143,8 @@ function getPdfBaseStyles() {
       bottom: -60px; right: 80px;
       width: 120px; height: 120px;
       border-radius: 50%;
-      background: rgba(124,58,237,0.1);
+      background: rgba(255,255,255,0.05);
+      ${docStyle === 'minimaliste' ? 'display:none;' : ''}
     }
 
     .pdf-header-left { flex: 1; z-index: 1; }
@@ -85,12 +157,13 @@ function getPdfBaseStyles() {
       background: #fff;
       padding: 4px;
       margin-bottom: 10px;
+      ${docStyle === 'minimaliste' ? '' : 'box-shadow: 0 2px 8px rgba(0,0,0,0.2);'}
     }
 
     .pdf-company-logo-placeholder {
       width: 58px; height: 58px;
       border-radius: 14px;
-      background: #2563eb;
+      background: ${primaryColor};
       display: flex; align-items: center; justify-content: center;
       font-size: 28px;
       margin-bottom: 10px;
@@ -118,28 +191,28 @@ function getPdfBaseStyles() {
       font-weight: 700;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: #60a5fa;
+      color: ${docStyle === 'minimaliste' ? primaryColor : '#60a5fa'};
       margin-bottom: 6px;
     }
 
     .pdf-doc-number {
       font-size: 28px;
       font-weight: 900;
-      color: #fff;
+      color: ${docStyle === 'minimaliste' ? primaryColor : '#fff'};
       letter-spacing: -0.5px;
       margin-bottom: 8px;
     }
 
     .pdf-doc-date {
       font-size: 12px;
-      color: rgba(255,255,255,0.7);
+      color: ${docStyle === 'minimaliste' ? '#64748b' : 'rgba(255,255,255,0.7)'};
       line-height: 1.8;
     }
 
     /* ===== BANDEAU COULEUR ===== */
     .pdf-color-band {
       height: 5px;
-      background: linear-gradient(90deg, #2563eb, #7c3aed, #06b6d4);
+      background: ${bandGradient};
     }
 
     /* ===== CORPS ===== */
@@ -164,8 +237,8 @@ function getPdfBaseStyles() {
     }
 
     .pdf-party-card.highlighted {
-      border-color: #2563eb;
-      background: #f0f7ff;
+      border-color: ${primaryColor};
+      background: ${primaryColor}11;
     }
 
     .pdf-party-label {
@@ -173,7 +246,7 @@ function getPdfBaseStyles() {
       font-weight: 800;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #2563eb;
+      color: ${primaryColor};
       margin-bottom: 8px;
       display: flex;
       align-items: center;
@@ -183,7 +256,7 @@ function getPdfBaseStyles() {
     .pdf-party-label::before {
       content: '';
       width: 16px; height: 2px;
-      background: #2563eb;
+      background: ${primaryColor};
       border-radius: 1px;
     }
 
@@ -274,7 +347,7 @@ function getPdfBaseStyles() {
     .pdf-total-row:last-child { border-bottom: none; }
 
     .pdf-total-row.highlight {
-      background: linear-gradient(135deg, #1e293b, #0f172a);
+      background: linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc);
       color: #fff;
     }
 
@@ -525,7 +598,7 @@ function getPdfBaseStyles() {
     .pdf-section-title::before {
       content: '';
       width: 4px; height: 14px;
-      background: #2563eb;
+      background: ${primaryColor};
       border-radius: 2px;
     }
 
@@ -540,8 +613,11 @@ function getPdfBaseStyles() {
 
 // ===== GÉNÉRATION EN-TÊTE SOCIÉTÉ =====
 function buildPdfHeader(company, docType, docNumber, docDate, extra = '') {
+  const s = getPdfStyle();
   const logo = getCompanyLogo(company);
   const initial = (company.name || 'B').charAt(0).toUpperCase();
+  const docStyle = s.style || 'moderne';
+  const headerText = s.headerText || '';
 
   return `
     <div class="pdf-header">
@@ -551,14 +627,17 @@ function buildPdfHeader(company, docType, docNumber, docDate, extra = '') {
           : `<div class="pdf-company-logo-placeholder">${initial}</div>`
         }
         <div class="pdf-company-name">${company.name || 'Ma Société'}</div>
+        ${headerText ? `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">${headerText}</div>` : ''}
         <div class="pdf-company-info">
           ${company.email ? `📧 ${company.email}<br/>` : ''}
           ${company.phone ? `📞 ${company.phone}<br/>` : ''}
           ${company.city ? `📍 ${company.city}` : ''}
           ${company.address ? `, ${company.address}` : ''}
-          ${company.ice ? `<br/>ICE : ${company.ice}` : ''}
+          ${(company.ice || company.rc || company.if_number) ? '<br/>' : ''}
+          ${company.ice ? `ICE : ${company.ice}` : ''}
           ${company.rc ? ` | RC : ${company.rc}` : ''}
-          ${company.if_num ? ` | IF : ${company.if_num}` : ''}
+          ${company.if_number ? ` | IF : ${company.if_number}` : ''}
+          ${company.cnss ? `<br/>CNSS : ${company.cnss}` : ''}
         </div>
       </div>
       <div class="pdf-header-right">
@@ -568,6 +647,7 @@ function buildPdfHeader(company, docType, docNumber, docDate, extra = '') {
           <strong>Date :</strong> ${pdfFmtDate(docDate)}<br/>
           ${extra}
         </div>
+        ${(company.rib || company.bank) ? `<div style="font-size:10px;margin-top:6px;opacity:0.75;text-align:right">${company.bank ? company.bank + '<br/>' : ''}${company.rib ? 'RIB : ' + company.rib : ''}</div>` : ''}
       </div>
     </div>
     <div class="pdf-color-band"></div>`;
@@ -575,23 +655,33 @@ function buildPdfHeader(company, docType, docNumber, docDate, extra = '') {
 
 // ===== PIED DE PAGE =====
 function buildPdfFooter(company) {
+  const s = getPdfStyle();
   const date = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  // Texte pied de page personnalisé depuis les paramètres
+  const footerText = s.footerText || `${company.name || ''} – ${company.phone || ''} – ${company.email || ''}`;
+  // Mentions légales de la société
+  const mentions = company.mentions || '';
+
   return `
     <div class="pdf-footer">
       <div class="pdf-footer-left">
         <strong>${company.name || ''}</strong><br/>
+        ${company.address ? company.address + '<br/>' : ''}
         ${company.city || ''} ${company.phone ? '– ' + company.phone : ''}
       </div>
       <div style="text-align:center">
         <div class="pdf-footer-center">Document généré le ${date}</div>
         <div class="pdf-footer-brand">BatiGest Pro – Gestion BTP & Commerce</div>
+        ${footerText ? `<div style="font-size:9px;color:#94a3b8;margin-top:2px">${footerText}</div>` : ''}
       </div>
       <div class="pdf-footer-right">
         ${company.ice ? `ICE : ${company.ice}<br/>` : ''}
         ${company.rc ? `RC : ${company.rc}<br/>` : ''}
-        ${company.bank ? `RIB : ${company.bank}` : ''}
+        ${company.if_number ? `IF : ${company.if_number}<br/>` : ''}
+        ${company.rib ? `RIB : ${company.rib}` : (company.bank ? company.bank : '')}
       </div>
-    </div>`;
+    </div>
+    ${mentions ? `<div style="font-size:8px;color:#94a3b8;text-align:center;padding:4px 36px;border-top:1px solid #f1f5f9">${mentions}</div>` : ''}`;
 }
 
 // ===== IMPRESSION DEVIS (Supabase async) =====
@@ -626,12 +716,15 @@ async function printDevisPDF(devisId) {
   const tvaAmt = ht * tva / 100;
   const ttc = devis.montant_ttc || ht + tvaAmt;
 
+  const pdfStyle = getPdfStyle();
+  const showMontantLettres = pdfStyle.montantLettres || false;
+
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
   <title>Devis ${devis.numero}</title>
-  <style>${getPdfBaseStyles()}</style>
+  <style>${getPdfBaseStyles(pdfStyle)}</style>
 </head>
 <body>
   <div class="pdf-page">
@@ -695,6 +788,11 @@ async function printDevisPDF(devisId) {
 
       ${devis.notes ? `<div class="pdf-notes"><div class="pdf-notes-title">📝 Notes & Conditions</div><div class="pdf-notes-text">${devis.notes}</div></div>` : ''}
 
+      ${showMontantLettres ? `<div class="pdf-notes" style="background:#f0f7ff;border-color:#bfdbfe">
+        <div class="pdf-notes-title">💬 Montant en lettres</div>
+        <div class="pdf-notes-text" style="font-style:italic;font-weight:500">${nombreEnLettres(ttc)}</div>
+      </div>` : ''}
+
       <div class="pdf-notes" style="background:#fffbeb;border-color:#fde68a">
         <div class="pdf-notes-title">⚠️ Conditions de validité</div>
         <div class="pdf-notes-text">Ce devis est valable jusqu'au <strong>${pdfFmtDate(validiteVal) || 'date non précisée'}</strong>. Passé ce délai, les prix peuvent être révisés. Ce document n'est pas une facture.</div>
@@ -754,16 +852,19 @@ async function printFacturePDF(factureId) {
     </tr>`).join('');
 
   const isFullyPaid = facture.statut === 'paye';
+  const pdfStyle = getPdfStyle();
+  const showMontantLettres = pdfStyle.montantLettres || false;
+  const showWatermark = pdfStyle.watermark !== false;
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
   <title>Facture ${facture.numero}</title>
-  <style>${getPdfBaseStyles()}</style>
+  <style>${getPdfBaseStyles(pdfStyle)}</style>
 </head>
 <body>
-  ${isFullyPaid ? '' : `<div class="pdf-watermark">${facture.statut === 'partiel' ? 'PARTIEL' : 'IMPAYÉE'}</div>`}
+  ${(!isFullyPaid && showWatermark) ? `<div class="pdf-watermark">${facture.statut === 'partiel' ? 'PARTIEL' : 'IMPAYÉE'}</div>` : ''}
   <div class="pdf-page">
     ${buildPdfHeader(company, 'FACTURE', facture.numero, facture.date,
       `<strong>Échéance :</strong> ${pdfFmtDate(facture.date_echeance || facture.echeance)}<br/>`
@@ -835,10 +936,15 @@ async function printFacturePDF(factureId) {
         </div>
       </div>
 
-      ${company.bank ? `
+      ${showMontantLettres ? `<div class="pdf-notes" style="background:#f0f7ff;border-color:#bfdbfe">
+        <div class="pdf-notes-title">💬 Montant en lettres</div>
+        <div class="pdf-notes-text" style="font-style:italic;font-weight:500">${nombreEnLettres(ttc)}</div>
+      </div>` : ''}
+
+      ${(company.rib || company.bank) ? `
       <div class="pdf-notes" style="background:#f0fdf4;border-color:#bbf7d0">
         <div class="pdf-notes-title">🏦 Informations bancaires</div>
-        <div class="pdf-notes-text"><strong>RIB :</strong> ${company.bank}<br/><strong>Banque :</strong> ${company.bank_name || ''}</div>
+        <div class="pdf-notes-text">${company.bank ? `<strong>Banque :</strong> ${company.bank}<br/>` : ''}${company.rib ? `<strong>RIB :</strong> ${company.rib}` : ''}</div>
       </div>` : ''}
 
       <div class="pdf-notes">
@@ -899,7 +1005,7 @@ async function printChantierPDF(chantierId) {
 <head>
   <meta charset="UTF-8"/>
   <title>Rapport Chantier – ${chantier.nom}</title>
-  <style>${getPdfBaseStyles()}</style>
+  <style>${getPdfBaseStyles(getPdfStyle())}</style>
 </head>
 <body>
   <div class="pdf-page">

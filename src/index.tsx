@@ -2,7 +2,11 @@ import { Hono } from 'hono'
 import { serveStatic } from 'hono/cloudflare-workers'
 import { cors } from 'hono/cors'
 
-const app = new Hono()
+type Bindings = {
+  SUPABASE_SERVICE_KEY?: string;
+}
+
+const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('/api/*', cors())
 app.use('/static/*', serveStatic({ root: './public' }))
@@ -22,6 +26,123 @@ app.get('/super-admin', (c) => {
 
 // API Routes
 app.get('/api/health', (c) => c.json({ status: 'ok', version: '1.0.0' }))
+
+const SUPABASE_URL = 'https://zevqmvbfmaktjkrndytw.supabase.co'
+
+// ===== ROUTES ADMIN SUPABASE (service_role protégé) =====
+// Ces routes nécessitent un token Super Admin valide dans le header
+
+async function verifySuperAdmin(token: string, serviceKey: string): Promise<boolean> {
+  if (!token || !serviceKey) return false
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_URL }
+    })
+    if (!res.ok) return false
+    const user = await res.json() as { id: string }
+    // Vérifier le profil dans la DB
+    const profRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=role`, {
+      headers: {
+        'Authorization': `Bearer ${serviceKey}`,
+        'apikey': serviceKey,
+        'Accept': 'application/json',
+      }
+    })
+    if (!profRes.ok) return false
+    const profiles = await profRes.json() as Array<{ role: string }>
+    return Array.isArray(profiles) && profiles.length > 0 && profiles[0].role === 'super_admin'
+  } catch {
+    return false
+  }
+}
+
+// Créer utilisateur Auth sans confirmation email (Super Admin uniquement)
+app.post('/api/admin/create-user', async (c) => {
+  const serviceKey = c.env?.SUPABASE_SERVICE_KEY || ''
+  if (!serviceKey) {
+    return c.json({ error: 'Service non configuré. Ajoutez SUPABASE_SERVICE_KEY dans les variables d\'environnement Cloudflare.' }, 503)
+  }
+
+  const authHeader = c.req.header('Authorization') || ''
+  const token = authHeader.replace('Bearer ', '')
+  const isAdmin = await verifySuperAdmin(token, serviceKey)
+  if (!isAdmin) return c.json({ error: 'Non autorisé' }, 403)
+
+  const body = await c.req.json() as { email: string; password: string; metadata?: object }
+  const { email, password, metadata } = body
+  if (!email || !password) return c.json({ error: 'Email et mot de passe requis' }, 400)
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': serviceKey,
+      'Authorization': `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: metadata || {} }),
+  })
+  const data = await res.json() as { id?: string; message?: string; error_description?: string }
+  if (!res.ok) return c.json({ error: data.message || data.error_description || 'Erreur création' }, res.status)
+  return c.json({ user: data })
+})
+
+// Supprimer utilisateur Auth (Super Admin uniquement)
+app.delete('/api/admin/delete-user/:userId', async (c) => {
+  const serviceKey = c.env?.SUPABASE_SERVICE_KEY || ''
+  if (!serviceKey) {
+    return c.json({ error: 'Service non configuré. Ajoutez SUPABASE_SERVICE_KEY dans les variables d\'environnement Cloudflare.' }, 503)
+  }
+
+  const authHeader = c.req.header('Authorization') || ''
+  const token = authHeader.replace('Bearer ', '')
+  const isAdmin = await verifySuperAdmin(token, serviceKey)
+  if (!isAdmin) return c.json({ error: 'Non autorisé' }, 403)
+
+  const userId = c.req.param('userId')
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: {
+      'apikey': serviceKey,
+      'Authorization': `Bearer ${serviceKey}`,
+    },
+  })
+  if (!res.ok) {
+    const data = await res.json() as { message?: string }
+    return c.json({ error: data.message || 'Erreur suppression' }, res.status)
+  }
+  return c.json({ success: true })
+})
+
+// Créer utilisateur par un admin de société (avec email_confirm=true, via service_role)
+app.post('/api/admin/create-company-user', async (c) => {
+  const serviceKey = c.env?.SUPABASE_SERVICE_KEY || ''
+  if (!serviceKey) {
+    // Fallback: retourner une instruction pour désactiver la confirmation email
+    return c.json({ error: 'SETUP_REQUIRED', message: 'Pour activer la création directe, allez dans Supabase → Auth → Settings et désactivez "Enable email confirmations". Ou ajoutez SUPABASE_SERVICE_KEY dans Cloudflare Pages → Settings → Environment Variables.' }, 503)
+  }
+
+  // Pour les admins de société, on vérifie juste que le token est valide (pas super_admin requis)
+  const authHeader = c.req.header('Authorization') || ''
+  const token = authHeader.replace('Bearer ', '')
+  if (!token) return c.json({ error: 'Token requis' }, 401)
+
+  const body = await c.req.json() as { email: string; password: string }
+  const { email, password } = body
+  if (!email || !password) return c.json({ error: 'Email et mot de passe requis' }, 400)
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': serviceKey,
+      'Authorization': `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ email, password, email_confirm: true }),
+  })
+  const data = await res.json() as { id?: string; message?: string; error_description?: string }
+  if (!res.ok) return c.json({ error: data.message || data.error_description || 'Erreur création' }, res.status)
+  return c.json({ user: data })
+})
 
 function getMainHTML(): string {
   return `<!DOCTYPE html>

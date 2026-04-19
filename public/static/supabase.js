@@ -1,6 +1,8 @@
 // ===== SUPABASE CLIENT =====
 const SUPABASE_URL = 'https://zevqmvbfmaktjkrndytw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpldnFtdmJmbWFrdGprcm5keXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjcwNjQsImV4cCI6MjA5MjEwMzA2NH0.4YH-9kNBDONLqSiDJEutg1dpbRTV3b1uu_DO6WnjRxE';
+// URL de base pour les appels API serveur
+const API_BASE = '';
 
 // Clé de stockage différente selon la page pour isoler les sessions
 const _isSuperAdmin = window.location.pathname.includes('super-admin');
@@ -90,6 +92,68 @@ const SB = {
   async deleteProfilesByCompany(companyId) {
     const { error } = await _supa.from('profiles').delete().eq('company_id', companyId);
     return { error };
+  },
+
+  // ADMIN AUTH OPERATIONS (via endpoints Hono sécurisés côté serveur)
+
+  // Crée un utilisateur directement validé (sans confirmation email)
+  // Utilise l'endpoint /api/admin/create-user sur le serveur Hono
+  async adminCreateUser(email, password, userData = {}) {
+    try {
+      const session = await this.getSession();
+      const token = session?.access_token || '';
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email, password, metadata: userData }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { data: null, error: { message: data.error || 'Erreur création' } };
+      return { data, error: null };
+    } catch (e) {
+      return { data: null, error: { message: e.message } };
+    }
+  },
+
+  // Supprime un utilisateur Auth via l'endpoint serveur
+  async adminDeleteUser(userId) {
+    try {
+      const session = await this.getSession();
+      const token = session?.access_token || '';
+      const res = await fetch(`/api/admin/delete-user/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { error: { message: data.error || 'Erreur suppression auth' } };
+      }
+      return { error: null };
+    } catch (e) {
+      return { error: { message: e.message } };
+    }
+  },
+
+  // Crée un utilisateur de société (admin de société) sans confirmation email
+  async adminCreateCompanyUser(email, password) {
+    try {
+      const session = await this.getSession();
+      const token = session?.access_token || '';
+      const res = await fetch('/api/admin/create-company-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // Si le service n'est pas configuré, on retourne un code spécial
+        if (data.error === 'SETUP_REQUIRED') return { data: null, error: { message: data.message, code: 'SETUP_REQUIRED' } };
+        return { data: null, error: { message: data.error || 'Erreur création' } };
+      }
+      return { data, error: null };
+    } catch (e) {
+      return { data: null, error: { message: e.message } };
+    }
   },
 
   // GENERIC CRUD (pour toutes les tables)

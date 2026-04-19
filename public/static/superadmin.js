@@ -400,13 +400,31 @@ async function toggleCompanyStatus(id, currentStatus) {
 
 async function deleteCompanySA(id) {
   if (!isValidUUID(id)) { saToast('ID invalide – société non Supabase, supprimez-la via le SQL Editor', 'danger'); return; }
-  saConfirm('Supprimer définitivement cette société et tous ses utilisateurs ?', async () => {
-    // Supprimer d'abord les profils liés
+  saConfirm('⚠️ Supprimer définitivement cette société et TOUS ses utilisateurs ? Cette action est irréversible !', async () => {
+    // 1. Récupérer tous les profils de la société pour supprimer leurs comptes Auth
+    const { data: profiles } = await SB.getCompanyProfiles(id);
+    const profileIds = (profiles || []).map(p => p.id);
+
+    // 2. Supprimer les profils DB
     const { error: pe } = await SB.deleteProfilesByCompany(id);
     if (pe) { saToast('Erreur profils : ' + pe.message, 'danger'); return; }
+
+    // 3. Supprimer les comptes Auth pour chaque profil
+    let authErrors = 0;
+    for (const uid of profileIds) {
+      const { error: ae } = await SB.adminDeleteUser(uid);
+      if (ae) authErrors++;
+    }
+
+    // 4. Supprimer la société
     const { error } = await SB.deleteCompany(id);
-    if (error) { saToast('Erreur suppression : ' + error.message, 'danger'); return; }
-    saToast('Société supprimée avec succès', 'success');
+    if (error) { saToast('Erreur suppression société : ' + error.message, 'danger'); return; }
+
+    if (authErrors > 0) {
+      saToast(`Société supprimée. ⚠️ ${authErrors} compte(s) Auth n'ont pas pu être supprimés automatiquement — vérifiez dans Supabase → Auth → Users.`, 'warning');
+    } else {
+      saToast('✅ Société et tous ses utilisateurs supprimés définitivement', 'success');
+    }
     await saNavigate('companies');
   });
 }
@@ -532,12 +550,28 @@ async function doCreateAndLink(companyId) {
   const errEl = document.getElementById('link-err');
   if (!name || !email || !pass) { errEl.textContent = 'Tous les champs sont requis'; errEl.style.display = 'block'; return; }
   if (pass.length < 6) { errEl.textContent = 'Mot de passe trop court (min 6 car.)'; errEl.style.display = 'block'; return; }
-  const { data, error } = await SB.signUp(email, pass);
-  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
-  const { error: pe } = await SB.createProfile({ id: data.user.id, company_id: companyId, name, email, role: 'admin', status: 'active' });
+
+  // Essayer création sans confirmation email via endpoint serveur admin
+  let userId = null;
+  let needsEmailConfirm = false;
+  const { data: adminData, error: adminErr } = await SB.adminCreateUser(email, pass);
+  if (adminErr) {
+    // Fallback sur signUp standard
+    const { data, error } = await SB.signUp(email, pass);
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    userId = data?.user?.id;
+    needsEmailConfirm = true;
+  } else {
+    userId = adminData?.user?.id;
+  }
+  if (!userId) { errEl.textContent = 'ID utilisateur non reçu'; errEl.style.display = 'block'; return; }
+
+  const { error: pe } = await SB.createProfile({ id: userId, company_id: companyId, name, email, role: 'admin', status: 'active' });
   if (pe) { errEl.textContent = pe.message; errEl.style.display = 'block'; return; }
   closeSaModal();
-  saToast(`Compte admin ${email} créé et lié !`, 'success');
+  saToast(needsEmailConfirm
+    ? `Compte ${email} créé et lié. ⚠️ L'utilisateur doit confirmer son email.`
+    : `✅ Compte ${email} créé, lié et validé — peut se connecter immédiatement !`, 'success');
   await saNavigate('companies');
 }
 
@@ -570,34 +604,75 @@ async function renderSAUsers(content) {
             </tr>
           </thead>
           <tbody>
-            ${(users || []).filter(u => u.role !== 'super_admin').map(u => `
-              <tr style="border-top:1px solid var(--border)">
+            ${(users || []).filter(u => u.role !== 'super_admin').map(u => {
+              const initials = (u.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+              const colors = ['#2563eb','#7c3aed','#16a34a','#d97706','#dc2626','#0891b2'];
+              const col = colors[(u.name||'').charCodeAt(0)%colors.length] || '#2563eb';
+              const uStatus = u.status || 'active';
+              const isSuspended = uStatus === 'suspended';
+              return `
+              <tr style="border-top:1px solid var(--border);${isSuspended ? 'opacity:0.65;' : ''}">
                 <td style="padding:12px 16px">
-                  <div style="font-weight:600;color:var(--text-primary)">${u.name}</div>
-                  <div style="font-size:11px;color:var(--text-secondary)">${u.email}</div>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="width:36px;height:36px;border-radius:10px;background:${col}22;border:2px solid ${col}44;display:flex;align-items:center;justify-content:center;color:${col};font-weight:800;font-size:13px;flex-shrink:0">${initials}</div>
+                    <div>
+                      <div style="font-weight:600;color:var(--text-primary)">${u.name}</div>
+                      <div style="font-size:11px;color:var(--text-secondary)">${u.email}</div>
+                    </div>
+                  </div>
                 </td>
-                <td style="padding:12px 16px;font-size:13px;color:var(--text-secondary)">${coMap[u.company_id] || '–'}</td>
+                <td style="padding:12px 16px;font-size:13px;color:var(--text-secondary)">${coMap[u.company_id] || '<span style="color:#dc2626;font-size:11px">Sans société</span>'}</td>
                 <td style="padding:12px 16px">
-                  <span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-secondary'}">${u.role === 'admin' ? 'Admin' : 'Utilisateur'}</span>
+                  <span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-secondary'}">${u.role === 'admin' ? '👑 Admin' : '👤 Utilisateur'}</span>
                 </td>
-                <td style="padding:12px 16px">${statusBadge(u.status || 'active')}</td>
+                <td style="padding:12px 16px">
+                  ${isSuspended
+                    ? `<span style="background:#dc262622;color:#dc2626;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-ban" style="margin-right:3px"></i>Suspendu</span>`
+                    : `<span style="background:#16a34a22;color:#16a34a;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-check" style="margin-right:3px"></i>Actif</span>`}
+                </td>
                 <td style="padding:12px 16px;text-align:center">
-                  <button class="btn btn-sm btn-danger" onclick="deleteUserSA('${u.id}')" title="Supprimer">
-                    <i class="fas fa-trash"></i>
-                  </button>
+                  <div style="display:flex;gap:6px;justify-content:center">
+                    <button class="btn btn-sm ${isSuspended ? 'btn-success' : 'btn-warning'}"
+                      onclick="toggleUserStatusSA('${u.id}','${uStatus}')"
+                      title="${isSuspended ? 'Activer' : 'Suspendre'}">
+                      <i class="fas ${isSuspended ? 'fa-check' : 'fa-ban'}"></i>
+                      ${isSuspended ? 'Activer' : 'Suspendre'}
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteUserSA('${u.id}')" title="Supprimer définitivement">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
                 </td>
-              </tr>`).join('') || `<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-secondary)">Aucun utilisateur</td></tr>`}
+              </tr>`;
+            }).join('') || `<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-secondary)">Aucun utilisateur</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>`;
 }
 
+async function toggleUserStatusSA(userId, currentStatus) {
+  const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+  const { error } = await SB.updateProfile(userId, { status: newStatus });
+  if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
+  saToast(newStatus === 'active' ? '✅ Utilisateur activé – peut se connecter' : '🔒 Utilisateur suspendu – accès bloqué', newStatus === 'active' ? 'success' : 'warning');
+  await saNavigate('users');
+}
+
 async function deleteUserSA(id) {
-  saConfirm('Supprimer cet utilisateur ?', async () => {
-    const { error } = await SB.deleteProfile(id);
-    if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
-    saToast('Utilisateur supprimé', 'success');
+  saConfirm('Supprimer définitivement cet utilisateur ? (profil + compte Auth)', async () => {
+    // 1. Supprimer le profil de la table profiles
+    const { error: pe } = await SB.deleteProfile(id);
+    if (pe) { saToast('Erreur profil : ' + pe.message, 'danger'); return; }
+
+    // 2. Supprimer le compte Auth via endpoint serveur
+    const { error: ae } = await SB.adminDeleteUser(id);
+    if (ae) {
+      // L'utilisateur Auth n'a pas pu être supprimé (service_key non configurée ?)
+      saToast(`Profil supprimé. ⚠️ Compte Auth non supprimé : ${ae.message}. Supprimez-le manuellement dans Supabase → Auth → Users.`, 'warning');
+    } else {
+      saToast('✅ Utilisateur supprimé définitivement (profil + Auth)', 'success');
+    }
     await saNavigate('users');
   });
 }
@@ -678,13 +753,22 @@ async function createCompanySA() {
     const { data: company, error: ce } = await SB.createCompany({ name, email, phone, city, plan, status: 'active' });
     if (ce) throw new Error('Erreur création société : ' + ce.message);
 
-    // 2. Créer le compte auth admin
-    const { data: authData, error: ae } = await SB.signUp(adminEmail, adminPass);
-    if (ae) throw new Error('Erreur création compte : ' + ae.message);
+    // 2. Créer le compte auth admin (sans confirmation email via endpoint serveur)
+    let userId = null;
+    const { data: adminData, error: adminErr } = await SB.adminCreateUser(adminEmail, adminPass);
+    if (adminErr) {
+      // Fallback sur signUp standard
+      const { data: signUpData, error: ae } = await SB.signUp(adminEmail, adminPass);
+      if (ae) throw new Error('Erreur création compte : ' + ae.message);
+      userId = signUpData?.user?.id;
+    } else {
+      userId = adminData?.user?.id;
+    }
+    if (!userId) throw new Error('ID utilisateur non reçu de Supabase');
 
     // 3. Créer le profil admin
     const { error: pe } = await SB.createProfile({
-      id: authData.user.id,
+      id: userId,
       company_id: company.id,
       name: adminName,
       email: adminEmail,
@@ -693,7 +777,10 @@ async function createCompanySA() {
     });
     if (pe) throw new Error('Erreur création profil : ' + pe.message);
 
-    saToast(`✅ Société "${name}" créée ! Admin : ${adminEmail}`, 'success');
+    const msg = adminErr
+      ? `✅ Société "${name}" créée ! Admin : ${adminEmail} ⚠️ (email de confirmation requis)`
+      : `✅ Société "${name}" créée ! Admin : ${adminEmail} — Peut se connecter immédiatement !`;
+    saToast(msg, 'success');
     await saNavigate('companies');
   } catch (err) {
     errEl.textContent = err.message;

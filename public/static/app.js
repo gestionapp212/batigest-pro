@@ -130,6 +130,13 @@ async function loadUserProfile(userId) {
   AppState.currentUser = profile;
   AppState.currentCompany = profile.companies || null;
 
+  // Vérifier si l'utilisateur est suspendu
+  if (profile.status === 'suspended') {
+    await SB.signOut();
+    renderLoginPage('Votre compte a été suspendu. Contactez l\'administrateur.');
+    return;
+  }
+
   if (profile.role === 'super_admin') {
     // Super admin ne peut pas accéder à l'app normale
     await SB.signOut();
@@ -142,6 +149,20 @@ async function loadUserProfile(userId) {
     return;
   }
 
+  // Synchroniser le logo depuis Supabase vers localStorage (pour accès rapide dans PDF)
+  const co = profile.companies;
+  if (co?.logo && !localStorage.getItem('batigest_logo_' + co.id)) {
+    localStorage.setItem('batigest_logo_' + co.id, co.logo);
+  }
+
+  // Appliquer la couleur d'app sauvegardée
+  try {
+    const appStyle = JSON.parse(localStorage.getItem('batigest_app_style') || '{}');
+    if (appStyle.color) {
+      document.documentElement.style.setProperty('--primary', appStyle.color);
+    }
+  } catch (_) {}
+
   renderApp();
 }
 
@@ -153,7 +174,7 @@ async function doLogin(email, password) {
       return { error: 'Email ou mot de passe incorrect. Vérifiez vos identifiants.' };
     }
     if (error.message.includes('Email not confirmed')) {
-      return { error: 'Veuillez confirmer votre email avant de vous connecter.' };
+      return { error: 'Veuillez confirmer votre email avant de vous connecter. Contactez votre administrateur pour activer votre compte.' };
     }
     return { error: 'Erreur de connexion. Réessayez dans quelques instants.' };
   }
@@ -2035,18 +2056,25 @@ function uploadLogo(input) {
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { toast('Image trop grande (max 2 Mo)', 'danger'); return; }
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     const b64 = e.target.result;
+    // Sauvegarder en localStorage (accès rapide)
     localStorage.setItem('batigest_logo_' + AppState.currentCompany.id, b64);
+    // Sauvegarder aussi dans Supabase pour synchronisation multi-appareils
+    await SB.updateCompany(AppState.currentCompany.id, { logo: b64 });
+    AppState.currentCompany.logo = b64;
     const preview = document.getElementById('logo-preview');
     if (preview) preview.innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:contain"/>`;
-    toast('Logo chargé avec succès', 'success');
+    toast('✅ Logo chargé et synchronisé !', 'success');
   };
   reader.readAsDataURL(file);
 }
 
-function removeLogo() {
+async function removeLogo() {
   localStorage.removeItem('batigest_logo_' + AppState.currentCompany?.id);
+  // Supprimer aussi dans Supabase
+  await SB.updateCompany(AppState.currentCompany?.id, { logo: null });
+  if (AppState.currentCompany) AppState.currentCompany.logo = null;
   switchParamTab('societe', false);
   toast('Logo supprimé', 'info');
 }
@@ -2241,14 +2269,52 @@ async function createNewUser() {
   const role = document.getElementById('nu-role').value;
   if (!name || !email || !pass) { toast('Remplissez tous les champs', 'danger'); return; }
   if (pass.length < 6) { toast('Mot de passe trop court (min 6 caractères)', 'danger'); return; }
+
+  // Vérifier quota abonnement
+  const plan = AppState.currentCompany?.plan || 'basic';
+  const quotas = { basic: 3, pro: 5, business: 10, enterprise: 999 };
+  const quota = quotas[plan] || 3;
+  if (_paramProfiles.length >= quota) {
+    toast(`⚠️ Quota atteint : le plan ${plan} autorise ${quota} utilisateurs max. Contactez le Super Admin pour passer à un plan supérieur.`, 'warning');
+    return;
+  }
+
   const btn = document.querySelector('.modal-footer .btn-primary');
   if (btn) { btn.disabled=true; btn.innerHTML='<span class="loading-spinner"></span> Création...'; }
-  const { data, error } = await SB.signUp(email, pass);
-  if (error) { if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur';} toast('Erreur : ' + error.message, 'danger'); return; }
-  const { error: pe } = await SB.createProfile({ id: data.user.id, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
-  if (pe) { toast('Compte créé mais profil échoué : ' + pe.message, 'warning'); }
-  else toast(`✅ ${name} ajouté ! Il recevra un email de confirmation.`, 'success');
-  closeModal();
+
+  // Essayer d'abord la création directe sans confirmation email (via endpoint serveur)
+  let userId = null;
+  const { data: adminData, error: adminErr } = await SB.adminCreateCompanyUser(email, pass);
+
+  if (adminErr && adminErr.code === 'SETUP_REQUIRED') {
+    // Service non configuré : fallback sur signUp standard + message d'info
+    const { data: signUpData, error: signUpErr } = await SB.signUp(email, pass);
+    if (signUpErr) {
+      if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur'; }
+      toast('Erreur : ' + signUpErr.message, 'danger'); return;
+    }
+    userId = signUpData?.user?.id;
+    // Créer le profil
+    const { error: pe } = await SB.createProfile({ id: userId, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
+    if (pe) { toast('Compte créé mais profil échoué : ' + pe.message, 'warning'); }
+    else {
+      closeModal();
+      toast(`✅ ${name} ajouté ! ⚠️ Il doit confirmer son email avant de pouvoir se connecter. (Pour éviter ça, désactivez la confirmation email dans Supabase → Auth → Settings)`, 'info');
+    }
+  } else if (adminErr) {
+    if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur'; }
+    toast('Erreur : ' + adminErr.message, 'danger'); return;
+  } else {
+    // Succès via endpoint admin — email validé automatiquement
+    userId = adminData?.user?.id;
+    const { error: pe } = await SB.createProfile({ id: userId, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
+    if (pe) { toast('Compte créé mais profil échoué : ' + pe.message, 'warning'); }
+    else {
+      closeModal();
+      toast(`✅ ${name} ajouté et validé automatiquement — peut se connecter immédiatement !`, 'success');
+    }
+  }
+
   const cid = AppState.currentCompany?.id;
   const { data: profiles } = await SB.getCompanyProfiles(cid);
   _paramProfiles = profiles || [];
