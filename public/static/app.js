@@ -701,7 +701,6 @@ async function saveDevis(id) {
     client_id: clientEl.value,
     client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
     date: document.getElementById('dv-date').value || null,
-    date_validite: document.getElementById('dv-validite').value || null,
     validite: document.getElementById('dv-validite').value || null,
     statut: id ? (document.getElementById('dv-statut')?.value||'en_attente') : 'en_attente',
     montant_ht: ht, tva, montant_ttc: ht*(1+tva/100),
