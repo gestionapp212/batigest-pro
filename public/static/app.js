@@ -69,7 +69,17 @@ function confirmDialog(msg, onOk) {
 function navigate(page) {
   AppState.currentPage = page;
   AppState.cache = {};
+  closeSidebar();
   renderMain();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (sb) sb.classList.toggle('open');
+}
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (sb) sb.classList.remove('open');
 }
 
 // ===== STAT CARDS =====
@@ -272,9 +282,10 @@ function renderNoCompany() {
 function renderApp() {
   document.getElementById('app-root').innerHTML = `
     <div id="sidebar"></div>
-    <div id="main-area">
+    <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <div id="main-content">
       <div id="topbar"></div>
-      <div id="page-content" style="padding:24px;flex:1;overflow-y:auto"></div>
+      <div id="page-content"></div>
     </div>`;
   renderSidebar();
   renderTopbar();
@@ -347,7 +358,7 @@ function renderTopbar() {
   document.getElementById('topbar').innerHTML = `
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fas fa-bars"></i></button>
+        <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
         <h1 style="font-size:18px;font-weight:700">${pageLabels[AppState.currentPage] || AppState.currentPage}</h1>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -579,7 +590,7 @@ async function renderDevis() {
           <td style="font-weight:700">${d.numero}</td>
           <td>${d.client_nom||'–'}</td>
           <td>${fmtDate(d.date)}</td>
-          <td>${fmtDate(d.date_validite)}</td>
+          <td>${fmtDate(d.date_validite || d.validite)}</td>
           <td>${fmt(d.montant_ht)}</td>
           <td style="font-weight:700">${fmt(d.montant_ttc)}</td>
           <td><span class="badge ${stMap[d.statut]||'badge-secondary'}">${stLabel[d.statut]||d.statut}</span></td>
@@ -624,7 +635,7 @@ async function openDevisModal(id = null) {
         </select>
       </div>
       <div class="form-group"><label class="form-label">Date</label><input id="dv-date" type="date" class="form-input" value="${dv.date||new Date().toISOString().split('T')[0]}"/></div>
-      <div class="form-group"><label class="form-label">Validité</label><input id="dv-validite" type="date" class="form-input" value="${dv.date_validite||''}"/></div>
+      <div class="form-group"><label class="form-label">Validité</label><input id="dv-validite" type="date" class="form-input" value="${dv.date_validite||dv.validite||''}"/></div>
     </div>
     <div style="margin-bottom:16px">
       <label class="form-label">Lignes du devis</label>
@@ -691,6 +702,7 @@ async function saveDevis(id) {
     client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
     date: document.getElementById('dv-date').value || null,
     date_validite: document.getElementById('dv-validite').value || null,
+    validite: document.getElementById('dv-validite').value || null,
     statut: id ? (document.getElementById('dv-statut')?.value||'en_attente') : 'en_attente',
     montant_ht: ht, tva, montant_ttc: ht*(1+tva/100),
     lignes: lignes,
@@ -748,7 +760,7 @@ async function previewDevis(id) {
         <div><div style="font-size:11px;color:var(--text-secondary)">CLIENT</div><div style="font-weight:700">${d.client_nom}</div></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">STATUT</div><span class="badge ${stMap[d.statut]||'badge-secondary'}">${stLabel[d.statut]||d.statut}</span></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">DATE</div><div>${fmtDate(d.date)}</div></div>
-        <div><div style="font-size:11px;color:var(--text-secondary)">VALIDITÉ</div><div>${fmtDate(d.date_validite)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-secondary)">VALIDITÉ</div><div>${fmtDate(d.date_validite||d.validite)}</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--primary);color:#fff">
@@ -800,7 +812,7 @@ async function renderFactures() {
           <td style="font-weight:700">${f.numero}</td>
           <td>${f.client_nom||'–'}</td>
           <td>${fmtDate(f.date)}</td>
-          <td style="color:${new Date(f.date_echeance)<new Date()&&f.statut!=='paye'?'#dc2626':'inherit'}">${fmtDate(f.date_echeance)}</td>
+          <td style="color:${new Date(f.date_echeance||f.echeance)<new Date()&&f.statut!=='paye'?'#dc2626':'inherit'}">${fmtDate(f.date_echeance||f.echeance)}</td>
           <td style="font-weight:700">${fmt(f.montant_ttc)}</td>
           <td style="color:#16a34a">${fmt(f.montant_paye)}</td>
           <td style="color:#dc2626;font-weight:600">${fmt(Number(f.montant_ttc)-Number(f.montant_paye))}</td>
@@ -847,7 +859,7 @@ async function openFactureModal(id = null) {
         </select>
       </div>
       <div class="form-group"><label class="form-label">Date facture</label><input id="fac-date" type="date" class="form-input" value="${fac.date||new Date().toISOString().split('T')[0]}"/></div>
-      <div class="form-group"><label class="form-label">Date échéance</label><input id="fac-echeance" type="date" class="form-input" value="${fac.date_echeance||''}"/></div>
+      <div class="form-group"><label class="form-label">Date échéance</label><input id="fac-echeance" type="date" class="form-input" value="${fac.date_echeance||fac.echeance||''}"/></div>
     </div>
     <div style="margin-bottom:16px">
       <label class="form-label">Lignes</label>
@@ -951,7 +963,7 @@ async function previewFacture(id) {
         <div><div style="font-size:11px;color:var(--text-secondary)">CLIENT</div><div style="font-weight:700">${f.client_nom}</div></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">STATUT</div><span class="badge ${stMap[f.statut]||'badge-secondary'}">${stLabel[f.statut]||f.statut}</span></div>
         <div><div style="font-size:11px;color:var(--text-secondary)">DATE</div><div>${fmtDate(f.date)}</div></div>
-        <div><div style="font-size:11px;color:var(--text-secondary)">ÉCHÉANCE</div><div>${fmtDate(f.date_echeance)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-secondary)">ÉCHÉANCE</div><div>${fmtDate(f.date_echeance||f.echeance)}</div></div>
       </div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--primary);color:#fff">
@@ -1100,8 +1112,8 @@ async function saveChantier(id) {
     nom, client_id: clientEl.value||null,
     client_nom: clientEl.value ? clientEl.options[clientEl.selectedIndex].dataset.nom : null,
     budget: parseFloat(document.getElementById('ch-budget').value)||0,
-    date_debut: document.getElementById('ch-debut').value,
-    date_fin: document.getElementById('ch-fin').value,
+    date_debut: document.getElementById('ch-debut').value || null,
+    date_fin: document.getElementById('ch-fin').value || null,
     statut: document.getElementById('ch-statut').value,
     description: document.getElementById('ch-desc').value,
   };

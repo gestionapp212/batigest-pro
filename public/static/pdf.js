@@ -594,15 +594,21 @@ function buildPdfFooter(company) {
     </div>`;
 }
 
-// ===== IMPRESSION DEVIS =====
-function printDevis(devisId) {
-  const cid = AppState.currentCompany?.id;
+// ===== IMPRESSION DEVIS (Supabase async) =====
+async function printDevisPDF(devisId) {
   const company = AppState.currentCompany;
-  const devis = DB.findByCompany('devis', cid).find(d => d.id === devisId);
+  if (!company) { toast('Aucune société chargée', 'danger'); return; }
+  const { data: devis } = await SB.getOne('devis', devisId);
   if (!devis) { toast('Devis introuvable', 'danger'); return; }
 
-  const client = DB.findByCompany('clients', cid).find(c => c.id === devis.client_id) || { name: devis.client_nom };
-  const validite = devis.validite ? `<strong>Validité :</strong> ${pdfFmtDate(devis.validite)}<br/>` : '';
+  let client = { name: devis.client_nom || '–' };
+  if (devis.client_id) {
+    const { data: cl } = await SB.getOne('clients', devis.client_id);
+    if (cl) client = cl;
+  }
+
+  const validiteVal = devis.date_validite || devis.validite || null;
+  const validite = validiteVal ? `<strong>Validité :</strong> ${pdfFmtDate(validiteVal)}<br/>` : '';
   const statuts = { accepte: 'badge-accepte', en_attente: 'badge-en_attente', refuse: 'badge-non_paye', expire: 'badge-non_paye' };
   const statutLabel = { accepte: '✓ Accepté', en_attente: '⏳ En attente', refuse: '✗ Refusé', expire: 'Expiré' };
 
@@ -691,7 +697,7 @@ function printDevis(devisId) {
 
       <div class="pdf-notes" style="background:#fffbeb;border-color:#fde68a">
         <div class="pdf-notes-title">⚠️ Conditions de validité</div>
-        <div class="pdf-notes-text">Ce devis est valable jusqu'au <strong>${pdfFmtDate(devis.validite) || 'date non précisée'}</strong>. Passé ce délai, les prix peuvent être révisés. Ce document n'est pas une facture.</div>
+        <div class="pdf-notes-text">Ce devis est valable jusqu'au <strong>${pdfFmtDate(validiteVal) || 'date non précisée'}</strong>. Passé ce délai, les prix peuvent être révisés. Ce document n'est pas une facture.</div>
       </div>
 
       <div class="pdf-signatures">
@@ -714,15 +720,20 @@ function printDevis(devisId) {
 
   openPdfWindow(html, `Devis_${devis.numero}`);
 }
+window.printDevisPDF = printDevisPDF;
 
-// ===== IMPRESSION FACTURE =====
-function printFacture(factureId) {
-  const cid = AppState.currentCompany?.id;
+// ===== IMPRESSION FACTURE (Supabase async) =====
+async function printFacturePDF(factureId) {
   const company = AppState.currentCompany;
-  const facture = DB.findByCompany('factures', cid).find(f => f.id === factureId);
+  if (!company) { toast('Aucune société chargée', 'danger'); return; }
+  const { data: facture } = await SB.getOne('factures', factureId);
   if (!facture) { toast('Facture introuvable', 'danger'); return; }
 
-  const client = DB.findByCompany('clients', cid).find(c => c.id === facture.client_id) || { name: facture.client_nom };
+  let client = { name: facture.client_nom || '–' };
+  if (facture.client_id) {
+    const { data: cl } = await SB.getOne('clients', facture.client_id);
+    if (cl) client = cl;
+  }
   const statuts = { paye: 'badge-paye', non_paye: 'badge-non_paye', partiel: 'badge-partiel' };
   const statutLabel = { paye: '✓ Payée', non_paye: '✗ Impayée', partiel: '◑ Paiement partiel' };
 
@@ -755,7 +766,7 @@ function printFacture(factureId) {
   ${isFullyPaid ? '' : `<div class="pdf-watermark">${facture.statut === 'partiel' ? 'PARTIEL' : 'IMPAYÉE'}</div>`}
   <div class="pdf-page">
     ${buildPdfHeader(company, 'FACTURE', facture.numero, facture.date,
-      `<strong>Échéance :</strong> ${pdfFmtDate(facture.echeance)}<br/>`
+      `<strong>Échéance :</strong> ${pdfFmtDate(facture.date_echeance || facture.echeance)}<br/>`
     )}
     <div class="pdf-body">
       <div class="pdf-parties">
@@ -832,7 +843,7 @@ function printFacture(factureId) {
 
       <div class="pdf-notes">
         <div class="pdf-notes-title">📋 Conditions de paiement</div>
-        <div class="pdf-notes-text">Paiement à réception de la facture ou au plus tard le <strong>${pdfFmtDate(facture.echeance)}</strong>. Tout retard de paiement entraîne des pénalités conformément à la législation en vigueur.</div>
+        <div class="pdf-notes-text">Paiement à réception de la facture ou au plus tard le <strong>${pdfFmtDate(facture.date_echeance || facture.echeance)}</strong>. Tout retard de paiement entraîne des pénalités conformément à la législation en vigueur.</div>
       </div>
 
       <div class="pdf-signatures" style="margin-top:20px">
@@ -855,21 +866,24 @@ function printFacture(factureId) {
 
   openPdfWindow(html, `Facture_${facture.numero}`);
 }
+window.printFacturePDF = printFacturePDF;
 
-// ===== RAPPORT CHANTIER =====
-function printChantierRapport(chantierId) {
-  const cid = AppState.currentCompany?.id;
+// ===== RAPPORT CHANTIER (Supabase async) =====
+async function printChantierPDF(chantierId) {
   const company = AppState.currentCompany;
-  const chantier = DB.findByCompany('chantiers', cid).find(c => c.id === chantierId);
+  if (!company) { toast('Aucune société chargée', 'danger'); return; }
+  const { data: chantier } = await SB.getOne('chantiers', chantierId);
   if (!chantier) { toast('Chantier introuvable', 'danger'); return; }
 
-  const entrees = DB.findByCompany('chantier_entrees', cid).filter(e => e.chantier_id === chantierId);
-  const achats = DB.findByCompany('chantier_achats', cid).filter(a => a.chantier_id === chantierId);
-  const mdo = DB.findByCompany('chantier_main_oeuvre', cid).filter(m => m.chantier_id === chantierId);
+  const [{ data: entrees }, { data: achats }, { data: mdo }] = await Promise.all([
+    SB.getWhere('chantier_entrees', 'chantier_id', chantierId),
+    SB.getWhere('chantier_achats', 'chantier_id', chantierId),
+    SB.getWhere('chantier_main_oeuvre', 'chantier_id', chantierId),
+  ]);
 
-  const totalEntrees = entrees.reduce((s, e) => s + e.montant, 0);
-  const totalAchats = achats.reduce((s, a) => s + a.montant, 0);
-  const totalMdo = mdo.reduce((s, m) => s + m.montant, 0);
+  const totalEntrees = (entrees||[]).reduce((s, e) => s + Number(e.montant||0), 0);
+  const totalAchats = (achats||[]).reduce((s, a) => s + Number(a.montant||0), 0);
+  const totalMdo = (mdo||[]).reduce((s, m) => s + Number(m.montant||0), 0);
   const totalSorties = totalAchats + totalMdo;
   const resultat = totalEntrees - totalSorties;
   const pctBudget = chantier.budget > 0 ? Math.round(totalSorties / chantier.budget * 100) : 0;
@@ -964,7 +978,7 @@ function printChantierRapport(chantierId) {
       </div>
 
       <!-- ENTRÉES -->
-      ${entrees.length > 0 ? `
+      ${(entrees||[]).length > 0 ? `
       <div class="pdf-section-title">Entrées – Avances client</div>
       <table class="pdf-table" style="margin-bottom:18px">
         <thead>
@@ -975,7 +989,7 @@ function printChantierRapport(chantierId) {
           </tr>
         </thead>
         <tbody>
-          ${entrees.map(e => `<tr>
+          ${(entrees||[]).map(e => `<tr>
             <td>${pdfFmtDateShort(e.date)}</td>
             <td>${e.description || '–'}</td>
             <td style="color:#16a34a;text-align:right;font-weight:600">${pdfFmt(e.montant)}</td>
@@ -990,7 +1004,7 @@ function printChantierRapport(chantierId) {
       </table>` : ''}
 
       <!-- ACHATS -->
-      ${achats.length > 0 ? `
+      ${(achats||[]).length > 0 ? `
       <div class="pdf-section-title">Achats & Matériaux</div>
       <table class="pdf-table" style="margin-bottom:18px">
         <thead>
@@ -1002,7 +1016,7 @@ function printChantierRapport(chantierId) {
           </tr>
         </thead>
         <tbody>
-          ${achats.map(a => `<tr>
+          ${(achats||[]).map(a => `<tr>
             <td>${pdfFmtDateShort(a.date)}</td>
             <td style="font-weight:500">${a.fournisseur || '–'}</td>
             <td>${a.produit || '–'}</td>
@@ -1018,7 +1032,7 @@ function printChantierRapport(chantierId) {
       </table>` : ''}
 
       <!-- MAIN D'ŒUVRE -->
-      ${mdo.length > 0 ? `
+      ${(mdo||[]).length > 0 ? `
       <div class="pdf-section-title">Main d'œuvre</div>
       <table class="pdf-table" style="margin-bottom:18px">
         <thead>
@@ -1031,7 +1045,7 @@ function printChantierRapport(chantierId) {
           </tr>
         </thead>
         <tbody>
-          ${mdo.map(m => `<tr>
+          ${(mdo||[]).map(m => `<tr>
             <td>${pdfFmtDateShort(m.date)}</td>
             <td style="font-weight:500">${m.nom}</td>
             <td style="font-size:11px;color:#7c3aed;font-weight:600">${typesMdo[m.type] || m.type}</td>
@@ -1094,6 +1108,7 @@ function printChantierRapport(chantierId) {
 
   openPdfWindow(html, `Rapport_${chantier.nom.replace(/\s+/g, '_')}`);
 }
+window.printChantierPDF = printChantierPDF;
 
 // ===== FENÊTRE PDF =====
 function openPdfWindow(html, filename) {
