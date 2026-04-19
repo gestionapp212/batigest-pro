@@ -1614,75 +1614,624 @@ async function renderRapports() {
   </div>`;
 }
 
-// ===== PARAMÈTRES =====
+// ===== PARAMÈTRES – MODULE COMPLET =====
+let _paramTab = 'societe';
+let _paramProfiles = [];
+
 async function renderParametres() {
   const cid = AppState.currentCompany?.id;
-  const { data: profiles } = await SB.getCompanyProfiles(cid);
+  const [{ data: profiles }] = await Promise.all([SB.getCompanyProfiles(cid)]);
+  _paramProfiles = profiles || [];
   const co = AppState.currentCompany;
   const content = document.getElementById('page-content');
+
+  // Calcul abonnement
+  const planLabels = { basic:'Basique', business:'Business', enterprise:'Enterprise' };
+  const planColors = { basic:'#64748b', business:'#2563eb', enterprise:'#7c3aed' };
+  const plan = co?.plan || 'basic';
+  const createdAt = co?.created_at ? new Date(co.created_at) : new Date();
+  const now = new Date();
+  const daysSince = Math.floor((now - createdAt) / 86400000);
+  const trialDays = 30;
+  const daysLeft = Math.max(0, trialDays - daysSince);
+
+  // Style PDF sauvegardé
+  const pdfStyle = JSON.parse(localStorage.getItem('batigest_pdf_style') || '{}');
+
   content.innerHTML = `
-  <h2 style="font-size:20px;font-weight:700;margin-bottom:20px">Paramètres</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-    <div class="card">
-      <h3 style="font-weight:700;margin-bottom:16px"><i class="fas fa-building" style="color:#2563eb;margin-right:8px"></i>Société</h3>
-      <div class="form-group"><label class="form-label">Nom</label><input id="co-name" class="form-input" value="${co?.name||''}"/></div>
-      <div class="form-group"><label class="form-label">Email</label><input id="co-email" class="form-input" value="${co?.email||''}"/></div>
-      <div class="form-group"><label class="form-label">Téléphone</label><input id="co-phone" class="form-input" value="${co?.phone||''}"/></div>
-      <div class="form-group"><label class="form-label">Ville</label><input id="co-city" class="form-input" value="${co?.city||''}"/></div>
-      <div class="form-group"><label class="form-label">ICE</label><input id="co-ice" class="form-input" value="${co?.ice||''}"/></div>
-      <div class="form-group"><label class="form-label">RC</label><input id="co-rc" class="form-input" value="${co?.rc||''}"/></div>
-      <div class="form-group"><label class="form-label">RIB Bancaire</label><input id="co-rib" class="form-input" value="${co?.rib||''}"/></div>
-      <button class="btn btn-primary" onclick="saveCompanySettings()"><i class="fas fa-save"></i> Enregistrer</button>
+  <div class="param-header">
+    <div>
+      <h2 style="font-size:22px;font-weight:800;margin-bottom:4px"><i class="fas fa-cog" style="color:var(--primary);margin-right:10px"></i>Paramètres</h2>
+      <p style="color:var(--text-secondary);font-size:13px">Gérez votre société, utilisateurs et préférences</p>
     </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h3 style="font-weight:700"><i class="fas fa-users" style="color:#7c3aed;margin-right:8px"></i>Utilisateurs</h3>
-        <button class="btn btn-primary btn-sm" onclick="openNewUserModal()"><i class="fas fa-plus"></i> Ajouter</button>
+  </div>
+
+  <!-- ONGLETS -->
+  <div class="param-tabs">
+    <button class="param-tab ${_paramTab==='societe'?'active':''}" onclick="switchParamTab('societe')">
+      <i class="fas fa-building"></i> Société
+    </button>
+    <button class="param-tab ${_paramTab==='utilisateurs'?'active':''}" onclick="switchParamTab('utilisateurs')">
+      <i class="fas fa-users"></i> Utilisateurs <span class="param-tab-badge">${_paramProfiles.length}</span>
+    </button>
+    <button class="param-tab ${_paramTab==='pdf'?'active':''}" onclick="switchParamTab('pdf')">
+      <i class="fas fa-file-pdf"></i> PDF & Style
+    </button>
+    <button class="param-tab ${_paramTab==='abonnement'?'active':''}" onclick="switchParamTab('abonnement')">
+      <i class="fas fa-crown"></i> Abonnement
+    </button>
+    <button class="param-tab ${_paramTab==='securite'?'active':''}" onclick="switchParamTab('securite')">
+      <i class="fas fa-shield-alt"></i> Sécurité
+    </button>
+  </div>
+
+  <!-- CONTENU ONGLETS -->
+  <div id="param-content">
+    ${renderParamSociete(co)}
+  </div>`;
+
+  // Afficher le bon onglet
+  if (_paramTab !== 'societe') switchParamTab(_paramTab, false);
+}
+
+function switchParamTab(tab, scroll=true) {
+  _paramTab = tab;
+  // Mettre à jour les boutons
+  document.querySelectorAll('.param-tab').forEach(b => b.classList.remove('active'));
+  const activeBtn = [...document.querySelectorAll('.param-tab')].find(b => b.onclick?.toString().includes(`'${tab}'`));
+  if (activeBtn) activeBtn.classList.add('active');
+  // Rendre le contenu
+  const co = AppState.currentCompany;
+  const c = document.getElementById('param-content');
+  if (!c) return;
+  const renders = {
+    societe: () => renderParamSociete(co),
+    utilisateurs: () => renderParamUtilisateurs(),
+    pdf: () => renderParamPDF(co),
+    abonnement: () => renderParamAbonnement(co),
+    securite: () => renderParamSecurite(),
+  };
+  c.innerHTML = renders[tab] ? renders[tab]() : '';
+  if (scroll) c.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ---- Onglet Société ----
+function renderParamSociete(co) {
+  const logo = localStorage.getItem('batigest_logo_' + co?.id) || co?.logo || null;
+  return `
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-image"></i> Logo de la société</div>
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px">
+      <div id="logo-preview" style="width:80px;height:80px;border-radius:14px;background:var(--bg-main);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+        ${logo ? `<img src="${logo}" style="width:100%;height:100%;object-fit:contain"/>` : `<i class="fas fa-image" style="font-size:28px;color:var(--text-secondary)"></i>`}
       </div>
-      ${(profiles||[]).map(u=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="width:36px;height:36px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${(u.name||'?')[0].toUpperCase()}</div>
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:14px">${u.name}</div>
-          <div style="font-size:12px;color:var(--text-secondary)">${u.email}</div>
-        </div>
-        <span class="badge ${u.role==='admin'?'badge-info':'badge-secondary'}">${u.role==='admin'?'Admin':'User'}</span>
-      </div>`).join('') || '<div style="color:var(--text-secondary);text-align:center;padding:20px">Aucun utilisateur</div>'}
+      <div>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer"><i class="fas fa-upload"></i> Charger logo
+          <input type="file" accept="image/*" style="display:none" onchange="uploadLogo(this)"/>
+        </label>
+        ${logo ? `<button class="btn btn-ghost btn-sm" onclick="removeLogo()" style="margin-left:8px;color:var(--danger)"><i class="fas fa-trash"></i> Supprimer</button>` : ''}
+        <p style="font-size:11px;color:var(--text-secondary);margin-top:6px">PNG, JPG — max 2 Mo — apparaît sur les PDF</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-building"></i> Informations générales</div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Nom de la société <span class="req">*</span></label><input id="co-name" class="form-input" value="${co?.name||''}" placeholder="SAID TRAVAUX"/></div>
+      <div class="form-group"><label class="form-label">Secteur d'activité</label><input id="co-secteur" class="form-input" value="${co?.secteur||''}" placeholder="BTP, Maçonnerie..."/></div>
+      <div class="form-group"><label class="form-label"><i class="fas fa-envelope" style="color:var(--primary);margin-right:4px"></i>Email</label><input id="co-email" type="email" class="form-input" value="${co?.email||''}" placeholder="contact@société.ma"/></div>
+      <div class="form-group"><label class="form-label"><i class="fas fa-phone" style="color:var(--success);margin-right:4px"></i>Téléphone</label><input id="co-phone" class="form-input" value="${co?.phone||''}" placeholder="+212 6xx xxx xxx"/></div>
+      <div class="form-group"><label class="form-label"><i class="fas fa-map-marker-alt" style="color:var(--danger);margin-right:4px"></i>Adresse</label><input id="co-address" class="form-input" value="${co?.address||''}" placeholder="Rue, Quartier..."/></div>
+      <div class="form-group"><label class="form-label"><i class="fas fa-city" style="color:var(--warning);margin-right:4px"></i>Ville</label><input id="co-city" class="form-input" value="${co?.city||''}" placeholder="Casablanca"/></div>
+      <div class="form-group"><label class="form-label"><i class="fas fa-globe" style="color:#0891b2;margin-right:4px"></i>Site web</label><input id="co-website" class="form-input" value="${co?.website||''}" placeholder="www.société.ma"/></div>
+      <div class="form-group"><label class="form-label"><i class="fas fa-fax" style="color:var(--secondary);margin-right:4px"></i>Fax</label><input id="co-fax" class="form-input" value="${co?.fax||''}" placeholder="+212 5xx xxx xxx"/></div>
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-file-contract"></i> Informations légales & financières</div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">ICE <span style="font-size:10px;color:var(--text-secondary)">(Identifiant Commun Entreprise)</span></label><input id="co-ice" class="form-input" value="${co?.ice||''}" placeholder="000000000000000"/></div>
+      <div class="form-group"><label class="form-label">RC <span style="font-size:10px;color:var(--text-secondary)">(Registre du Commerce)</span></label><input id="co-rc" class="form-input" value="${co?.rc||''}" placeholder="12345"/></div>
+      <div class="form-group"><label class="form-label">IF <span style="font-size:10px;color:var(--text-secondary)">(Identifiant Fiscal)</span></label><input id="co-if" class="form-input" value="${co?.if_number||''}" placeholder="12345678"/></div>
+      <div class="form-group"><label class="form-label">CNSS</label><input id="co-cnss" class="form-input" value="${co?.cnss||''}" placeholder="12345678"/></div>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">RIB Bancaire <span style="font-size:10px;color:var(--text-secondary)">(Relevé d'Identité Bancaire)</span></label><input id="co-rib" class="form-input" value="${co?.rib||''}" placeholder="XXX XXXX XXXXXXXXXX XX"/></div>
+      <div class="form-group"><label class="form-label">Banque</label><input id="co-bank" class="form-input" value="${co?.bank||''}" placeholder="Attijariwafa, BMCE..."/></div>
+      <div class="form-group"><label class="form-label">Capital social (DH)</label><input id="co-capital" type="number" class="form-input" value="${co?.capital||''}" placeholder="100000"/></div>
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-align-left"></i> Mentions légales (bas de page PDF)</div>
+    <div class="form-group"><textarea id="co-mentions" class="form-textarea" rows="3" placeholder="Ex: Société à Responsabilité Limitée (SARL) au capital de 100 000 DH — RC : 12345 — ICE : 000000000000000 — IF : 12345678">${co?.mentions||''}</textarea></div>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <button class="btn btn-primary" onclick="saveCompanySettings()"><i class="fas fa-save"></i> Enregistrer les modifications</button>
+    <button class="btn btn-secondary" onclick="navigate('parametres')"><i class="fas fa-undo"></i> Annuler</button>
+  </div>`;
+}
+
+// ---- Onglet Utilisateurs ----
+function renderParamUtilisateurs() {
+  const isAdmin = AppState.currentProfile?.role === 'admin';
+  const statusColors = { active:'badge-success', inactive:'badge-danger', pending:'badge-warning' };
+  const statusLabels = { active:'Actif', inactive:'Inactif', pending:'En attente' };
+  return `
+  <div class="param-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <div class="param-section-title" style="margin-bottom:4px"><i class="fas fa-users"></i> Équipe — ${_paramProfiles.length} membre(s)</div>
+        <p style="font-size:12px;color:var(--text-secondary)">Gérez les accès à votre espace BatiGest Pro</p>
+      </div>
+      ${isAdmin ? `<button class="btn btn-primary" onclick="openNewUserModal()"><i class="fas fa-user-plus"></i> Ajouter un membre</button>` : ''}
+    </div>
+    <div class="users-grid">
+      ${_paramProfiles.map(u => {
+        const initials = (u.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        const colors = ['#2563eb','#7c3aed','#16a34a','#d97706','#dc2626','#0891b2'];
+        const color = colors[u.name?.charCodeAt(0)%colors.length] || '#2563eb';
+        const isCurrentUser = u.id === AppState.currentProfile?.id;
+        return `
+        <div class="user-card ${isCurrentUser?'user-card-me':''}">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:48px;height:48px;border-radius:14px;background:${color}22;border:2px solid ${color}44;display:flex;align-items:center;justify-content:center;color:${color};font-weight:800;font-size:16px;flex-shrink:0">${initials}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div style="font-weight:700;font-size:15px">${u.name}</div>
+                ${isCurrentUser ? '<span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:8px;font-weight:600">Vous</span>' : ''}
+              </div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${u.email}</div>
+              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <span class="badge ${u.role==='admin'?'badge-info':'badge-secondary'}">${u.role==='admin'?'👑 Admin':'👤 Utilisateur'}</span>
+                <span class="badge ${statusColors[u.status]||'badge-secondary'}">${statusLabels[u.status]||u.status||'–'}</span>
+              </div>
+            </div>
+          </div>
+          ${isAdmin && !isCurrentUser ? `
+          <div style="display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('${u.id}','${u.name}','${u.role}')"><i class="fas fa-edit"></i> Modifier</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}','${u.status}')" style="color:${u.status==='active'?'#d97706':'#16a34a'}">
+              <i class="fas fa-${u.status==='active'?'pause':'play'}"></i> ${u.status==='active'?'Désactiver':'Activer'}
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteUserConfirm('${u.id}','${u.name}')" style="color:var(--danger)"><i class="fas fa-trash"></i></button>
+          </div>` : ''}
+        </div>`;
+      }).join('') || '<div class="empty-state"><div style="font-size:40px;margin-bottom:12px">👥</div><h3>Aucun utilisateur</h3></div>'}
     </div>
   </div>`;
+}
+
+// ---- Onglet PDF & Style ----
+function renderParamPDF(co) {
+  const s = JSON.parse(localStorage.getItem('batigest_pdf_style') || '{}');
+  const appStyle = JSON.parse(localStorage.getItem('batigest_app_style') || '{}');
+  return `
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-palette"></i> Style des documents PDF</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Couleur principale PDF</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="pdf-color" value="${s.color||'#2563eb'}" style="width:48px;height:38px;border-radius:8px;border:1px solid var(--border);cursor:pointer;padding:2px"/>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${['#2563eb','#7c3aed','#16a34a','#dc2626','#d97706','#0891b2','#1e293b','#064e3b'].map(c=>`<div onclick="document.getElementById('pdf-color').value='${c}'" style="width:28px;height:28px;border-radius:6px;background:${c};cursor:pointer;border:2px solid ${s.color===c?'#fff':'transparent'};box-shadow:0 0 0 1px ${c}88"></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Style du document</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          ${[['moderne','fa-star','Moderne'],['classique','fa-certificate','Classique'],['minimaliste','fa-minus','Minimaliste']].map(([v,i,l])=>`
+          <label style="cursor:pointer">
+            <input type="radio" name="pdf-style" value="${v}" ${(s.style||'moderne')===v?'checked':''} style="display:none" onchange="document.querySelectorAll('.pdf-style-opt').forEach(x=>x.classList.remove('selected'));this.parentElement.querySelector('.pdf-style-opt').classList.add('selected')"/>
+            <div class="pdf-style-opt ${(s.style||'moderne')===v?'selected':''}">
+              <i class="fas ${i}" style="font-size:18px;margin-bottom:4px"></i><br/>${l}
+            </div>
+          </label>`).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Police du document</label>
+        <select id="pdf-font" class="form-select">
+          <option value="Inter" ${(s.font||'Inter')==='Inter'?'selected':''}>Inter (Moderne)</option>
+          <option value="Georgia" ${s.font==='Georgia'?'selected':''}>Georgia (Classique)</option>
+          <option value="Arial" ${s.font==='Arial'?'selected':''}>Arial (Standard)</option>
+          <option value="Courier New" ${s.font==='Courier New'?'selected':''}>Courier (Monospace)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">TVA par défaut (%)</label>
+        <input type="number" id="pdf-tva" class="form-input" value="${s.tva||20}" min="0" max="100"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label"><i class="fas fa-align-left"></i> En-tête PDF (introduction)</label>
+      <textarea id="pdf-header-text" class="form-textarea" rows="2" placeholder="Texte affiché sous le nom de la société dans l'en-tête...">${s.headerText||''}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label"><i class="fas fa-shoe-prints"></i> Pied de page PDF</label>
+      <textarea id="pdf-footer-text" class="form-textarea" rows="2" placeholder="Ex: Merci de votre confiance — Tél: +212 6xx xxx xxx — email@société.ma">${s.footerText||`${co?.name||''} — ${co?.phone||''} — ${co?.email||''}`}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="pdf-montant-lettres" ${s.montantLettres?'checked':''} style="width:16px;height:16px;accent-color:var(--primary)"/>
+        Afficher le montant en lettres sur les PDF
+      </label>
+      <p style="font-size:11px;color:var(--text-secondary);margin-top:4px">Ex: "Dix mille cinq cents dirhams et zéro centime"</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="pdf-watermark" ${s.watermark?'checked':''} style="width:16px;height:16px;accent-color:var(--primary)"/>
+        Filigrane "IMPAYÉE" sur les factures non réglées
+      </label>
+    </div>
+    <button class="btn btn-primary" onclick="savePdfStyle()"><i class="fas fa-save"></i> Enregistrer le style PDF</button>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-paint-brush"></i> Thème de l'application</div>
+    <div class="form-grid-2">
+      <div>
+        <label class="form-label">Couleur principale de l'interface</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          ${[['#2563eb','Bleu'],['#7c3aed','Violet'],['#16a34a','Vert'],['#dc2626','Rouge'],['#d97706','Orange'],['#0891b2','Cyan'],['#db2777','Rose'],['#1e293b','Ardoise']].map(([c,n])=>`
+          <button onclick="applyAppColor('${c}')" title="${n}" style="width:36px;height:36px;border-radius:10px;background:${c};border:3px solid ${(appStyle.color||'#2563eb')===c?'#fff':'transparent'};cursor:pointer;box-shadow:0 0 0 2px ${c}"></button>`).join('')}
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Mode d'affichage</label>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button onclick="setTheme('light')" class="btn ${AppState.theme==='light'?'btn-primary':'btn-secondary'}"><i class="fas fa-sun"></i> Clair</button>
+          <button onclick="setTheme('dark')" class="btn ${AppState.theme==='dark'?'btn-primary':'btn-secondary'}"><i class="fas fa-moon"></i> Sombre</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---- Onglet Abonnement ----
+function renderParamAbonnement(co) {
+  const plan = co?.plan || 'basic';
+  const createdAt = co?.created_at ? new Date(co.created_at) : new Date();
+  const now = new Date();
+  const daysSince = Math.floor((now - createdAt) / 86400000);
+  const expiresAt = new Date(createdAt);
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+  const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / 86400000));
+  const pct = Math.max(0, Math.min(100, Math.round(daysLeft / 365 * 100)));
+  const planFeatures = {
+    basic: ['✅ Devis & Factures', '✅ 3 Utilisateurs max', '✅ Clients & Chantiers', '✅ Stock de base', '❌ Rapports avancés', '❌ Support prioritaire'],
+    business: ['✅ Tout Basic +', '✅ 10 Utilisateurs', '✅ Rapports complets', '✅ PDF personnalisé', '✅ Support prioritaire', '❌ API & Intégrations'],
+    enterprise: ['✅ Tout Business +', '✅ Utilisateurs illimités', '✅ API & Intégrations', '✅ Personnalisation totale', '✅ Support dédié 24/7', '✅ Formation incluse'],
+  };
+  const planPrices = { basic:'Gratuit', business:'299 DH/mois', enterprise:'799 DH/mois' };
+  const planColors2 = { basic:'#64748b', business:'#2563eb', enterprise:'#7c3aed' };
+  return `
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-crown"></i> Votre abonnement actuel</div>
+    <div class="plan-current-card" style="border-left:4px solid ${planColors2[plan]}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">Plan actuel</div>
+          <div style="font-size:28px;font-weight:900;color:${planColors2[plan]}">${plan.charAt(0).toUpperCase()+plan.slice(1)}</div>
+          <div style="font-size:14px;color:var(--text-secondary);margin-top:4px">${planPrices[plan]}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;color:var(--text-secondary)">Expiration</div>
+          <div style="font-size:22px;font-weight:800;color:${daysLeft<30?'#dc2626':daysLeft<90?'#d97706':'#16a34a'}">${daysLeft} jours</div>
+          <div style="font-size:12px;color:var(--text-secondary)">jusqu'au ${expiresAt.toLocaleDateString('fr-FR')}</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);margin-bottom:6px">
+          <span>Temps restant</span><span style="font-weight:600;color:${daysLeft<30?'#dc2626':'var(--text-primary)'}">${pct}%</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="height:100%;border-radius:4px;background:${daysLeft<30?'#dc2626':daysLeft<90?'#d97706':planColors2[plan]};width:${pct}%;transition:width 0.5s"></div>
+        </div>
+      </div>
+      ${daysLeft < 30 ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(220,38,38,0.08);border-radius:8px;border-left:3px solid #dc2626;font-size:13px;color:#dc2626"><i class="fas fa-exclamation-triangle"></i> Votre abonnement expire bientôt ! Contactez votre administrateur pour le renouveler.</div>` : ''}
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-list-check"></i> Fonctionnalités de votre plan</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+      ${(planFeatures[plan]||[]).map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg-main);border-radius:8px;font-size:13px">${f}</div>`).join('')}
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-rocket"></i> Passer à un plan supérieur</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+      ${[['business','Business','299 DH/mois','#2563eb'],['enterprise','Enterprise','799 DH/mois','#7c3aed']].filter(([p])=>p!==plan).map(([p,n,price,col])=>`
+      <div style="border:2px solid ${col};border-radius:16px;padding:20px;background:${col}08">
+        <div style="font-size:18px;font-weight:800;color:${col};margin-bottom:4px">${n}</div>
+        <div style="font-size:22px;font-weight:900;margin-bottom:12px">${price}</div>
+        ${(planFeatures[p]||[]).slice(0,4).map(f=>`<div style="font-size:12px;margin-bottom:4px">${f}</div>`).join('')}
+        <button class="btn btn-primary btn-sm" style="margin-top:12px;background:${col};width:100%;justify-content:center" onclick="toast('Contactez votre Super Admin pour changer de plan','info')"><i class="fas fa-arrow-up"></i> Passer à ${n}</button>
+      </div>`).join('')}
+    </div>
+    <p style="font-size:12px;color:var(--text-secondary);margin-top:12px"><i class="fas fa-info-circle"></i> Pour changer de plan, contactez l'administrateur BatiGest Pro.</p>
+  </div>`;
+}
+
+// ---- Onglet Sécurité ----
+function renderParamSecurite() {
+  const u = AppState.currentProfile;
+  return `
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-key"></i> Changer le mot de passe</div>
+    <div style="max-width:420px">
+      <div class="form-group">
+        <label class="form-label">Nouveau mot de passe</label>
+        <div style="position:relative">
+          <input type="password" id="new-pwd" class="form-input" placeholder="Minimum 8 caractères" style="padding-right:40px"/>
+          <button type="button" onclick="toggleFieldPwd('new-pwd','eye-new')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-secondary)"><i class="fas fa-eye" id="eye-new"></i></button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmer le mot de passe</label>
+        <div style="position:relative">
+          <input type="password" id="confirm-pwd" class="form-input" placeholder="Répéter le mot de passe" style="padding-right:40px"/>
+          <button type="button" onclick="toggleFieldPwd('confirm-pwd','eye-confirm')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-secondary)"><i class="fas fa-eye" id="eye-confirm"></i></button>
+        </div>
+      </div>
+      <div id="pwd-strength" style="display:none;margin-bottom:12px"></div>
+      <button class="btn btn-primary" onclick="changePassword()"><i class="fas fa-save"></i> Mettre à jour le mot de passe</button>
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-database"></i> Sauvegarde des données</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+      <div style="padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border)">
+        <div style="font-size:24px;margin-bottom:8px">📊</div>
+        <div style="font-weight:700;margin-bottom:4px">Export Données</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">Télécharger toutes vos données en JSON</div>
+        <button class="btn btn-secondary btn-sm" onclick="exportData()"><i class="fas fa-download"></i> Exporter JSON</button>
+      </div>
+      <div style="padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border)">
+        <div style="font-size:24px;margin-bottom:8px">📋</div>
+        <div style="font-weight:700;margin-bottom:4px">Export CSV</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">Clients, factures, devis en CSV</div>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()"><i class="fas fa-file-csv"></i> Exporter CSV</button>
+      </div>
+      <div style="padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border)">
+        <div style="font-size:24px;margin-bottom:8px">🕒</div>
+        <div style="font-weight:700;margin-bottom:4px">Dernière sauvegarde</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">Données synchronisées en temps réel sur Supabase</div>
+        <span class="badge badge-success"><i class="fas fa-check-circle"></i> Cloud synchronisé</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="param-section">
+    <div class="param-section-title"><i class="fas fa-user-circle"></i> Informations du compte</div>
+    <div style="padding:16px;background:var(--bg-main);border-radius:12px;border:1px solid var(--border);max-width:420px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="width:52px;height:52px;border-radius:14px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px">${(u?.name||'?')[0].toUpperCase()}</div>
+        <div>
+          <div style="font-weight:700;font-size:16px">${u?.name||'–'}</div>
+          <div style="font-size:12px;color:var(--text-secondary)">${u?.email||'–'}</div>
+          <span class="badge badge-info" style="margin-top:4px">${u?.role==='admin'?'👑 Admin':'👤 Utilisateur'}</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nom d'affichage</label>
+        <input id="profile-name" class="form-input" value="${u?.name||''}"/>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="updateProfileName()"><i class="fas fa-save"></i> Mettre à jour le nom</button>
+    </div>
+  </div>`;
+}
+
+// ===== FONCTIONS PARAMÈTRES =====
+
+function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('Image trop grande (max 2 Mo)', 'danger'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result;
+    localStorage.setItem('batigest_logo_' + AppState.currentCompany.id, b64);
+    const preview = document.getElementById('logo-preview');
+    if (preview) preview.innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:contain"/>`;
+    toast('Logo chargé avec succès', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo() {
+  localStorage.removeItem('batigest_logo_' + AppState.currentCompany?.id);
+  switchParamTab('societe', false);
+  toast('Logo supprimé', 'info');
 }
 
 async function saveCompanySettings() {
   const cid = AppState.currentCompany?.id;
   const updates = {
-    name: document.getElementById('co-name').value,
-    email: document.getElementById('co-email').value,
-    phone: document.getElementById('co-phone').value,
-    city: document.getElementById('co-city').value,
-    ice: document.getElementById('co-ice').value,
-    rc: document.getElementById('co-rc').value,
-    rib: document.getElementById('co-rib').value,
+    name: document.getElementById('co-name')?.value || AppState.currentCompany.name,
+    email: document.getElementById('co-email')?.value || '',
+    phone: document.getElementById('co-phone')?.value || '',
+    city: document.getElementById('co-city')?.value || '',
+    address: document.getElementById('co-address')?.value || '',
+    website: document.getElementById('co-website')?.value || '',
+    fax: document.getElementById('co-fax')?.value || '',
+    secteur: document.getElementById('co-secteur')?.value || '',
+    ice: document.getElementById('co-ice')?.value || '',
+    rc: document.getElementById('co-rc')?.value || '',
+    if_number: document.getElementById('co-if')?.value || '',
+    cnss: document.getElementById('co-cnss')?.value || '',
+    rib: document.getElementById('co-rib')?.value || '',
+    bank: document.getElementById('co-bank')?.value || '',
+    capital: parseFloat(document.getElementById('co-capital')?.value) || null,
+    mentions: document.getElementById('co-mentions')?.value || '',
   };
-  const { data } = await SB.updateCompany(cid, updates);
-  if (data) { AppState.currentCompany = data; toast('Paramètres sauvegardés', 'success'); }
-  else toast('Erreur lors de la sauvegarde', 'danger');
+  const btn = document.querySelector('.param-section .btn-primary');
+  if (btn) { btn.disabled=true; btn.innerHTML='<span class="loading-spinner"></span> Enregistrement...'; }
+  const { data, error } = await SB.updateCompany(cid, updates);
+  if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Enregistrer les modifications'; }
+  if (error) { toast('Erreur : ' + (error.message||'inconnue'), 'danger'); return; }
+  if (data) AppState.currentCompany = data;
+  toast('✅ Paramètres de la société sauvegardés !', 'success');
+}
+
+function savePdfStyle() {
+  const style = {
+    color: document.getElementById('pdf-color')?.value || '#2563eb',
+    style: document.querySelector('input[name="pdf-style"]:checked')?.value || 'moderne',
+    font: document.getElementById('pdf-font')?.value || 'Inter',
+    tva: parseFloat(document.getElementById('pdf-tva')?.value) || 20,
+    headerText: document.getElementById('pdf-header-text')?.value || '',
+    footerText: document.getElementById('pdf-footer-text')?.value || '',
+    montantLettres: document.getElementById('pdf-montant-lettres')?.checked || false,
+    watermark: document.getElementById('pdf-watermark')?.checked || false,
+  };
+  localStorage.setItem('batigest_pdf_style', JSON.stringify(style));
+  toast('✅ Style PDF sauvegardé !', 'success');
+}
+
+function applyAppColor(color) {
+  document.documentElement.style.setProperty('--primary', color);
+  // Calculer une couleur plus sombre
+  const darker = color + 'cc';
+  document.documentElement.style.setProperty('--primary-dark', darker);
+  const appStyle = { color };
+  localStorage.setItem('batigest_app_style', JSON.stringify(appStyle));
+  toast('Couleur appliquée !', 'success');
+  switchParamTab('pdf', false);
+}
+
+function toggleFieldPwd(fieldId, eyeId) {
+  const f = document.getElementById(fieldId);
+  const e = document.getElementById(eyeId);
+  if (!f || !e) return;
+  f.type = f.type === 'password' ? 'text' : 'password';
+  e.className = f.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+async function changePassword() {
+  const pwd = document.getElementById('new-pwd')?.value;
+  const confirm = document.getElementById('confirm-pwd')?.value;
+  if (!pwd || pwd.length < 8) { toast('Mot de passe trop court (min 8 caractères)', 'danger'); return; }
+  if (pwd !== confirm) { toast('Les mots de passe ne correspondent pas', 'danger'); return; }
+  const { error } = await _supa.auth.updateUser({ password: pwd });
+  if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
+  toast('✅ Mot de passe mis à jour avec succès !', 'success');
+  document.getElementById('new-pwd').value = '';
+  document.getElementById('confirm-pwd').value = '';
+}
+
+async function updateProfileName() {
+  const name = document.getElementById('profile-name')?.value?.trim();
+  if (!name) { toast('Nom invalide', 'danger'); return; }
+  const { error } = await SB.updateProfile(AppState.currentProfile.id, { name });
+  if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
+  AppState.currentProfile.name = name;
+  toast('✅ Nom mis à jour !', 'success');
+  renderSidebar();
+}
+
+async function exportData() {
+  const cid = AppState.currentCompany?.id;
+  const [clients, chantiers, devis, factures, paiements] = await Promise.all([
+    SB.getAll('clients', cid), SB.getAll('chantiers', cid),
+    SB.getAll('devis', cid), SB.getAll('factures', cid), SB.getAll('paiements', cid),
+  ]);
+  const data = { societe: AppState.currentCompany, clients: clients.data, chantiers: chantiers.data, devis: devis.data, factures: factures.data, paiements: paiements.data, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `batigest_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click(); toast('Export JSON téléchargé', 'success');
+}
+
+async function exportCSV() {
+  const cid = AppState.currentCompany?.id;
+  const { data: factures } = await SB.getAll('factures', cid);
+  if (!factures?.length) { toast('Aucune donnée à exporter', 'warning'); return; }
+  const headers = ['Numéro','Client','Date','Échéance','Montant TTC','Payé','Statut'];
+  const rows = factures.map(f => [f.numero, f.client_nom, f.date, f.date_echeance||'', f.montant_ttc, f.montant_paye, f.statut]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v||''}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `factures_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); toast('Export CSV téléchargé', 'success');
 }
 
 function openNewUserModal() {
   openModal(`
     <div class="modal-header"><h3 class="modal-title"><i class="fas fa-user-plus" style="margin-right:8px;color:#2563eb"></i>Nouvel utilisateur</h3><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
-    <div class="form-group"><label class="form-label">Nom complet <span class="req">*</span></label><input id="nu-name" class="form-input" placeholder="Prénom Nom"/></div>
-    <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input id="nu-email" type="email" class="form-input" placeholder="email@exemple.ma"/></div>
-    <div class="form-group"><label class="form-label">Mot de passe <span class="req">*</span></label><input id="nu-pass" type="password" class="form-input" placeholder="Minimum 6 caractères"/></div>
+    <div class="form-grid-2">
+      <div class="form-group"><label class="form-label">Nom complet <span class="req">*</span></label><input id="nu-name" class="form-input" placeholder="Prénom Nom"/></div>
+      <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input id="nu-email" type="email" class="form-input" placeholder="email@société.ma"/></div>
+      <div class="form-group"><label class="form-label">Mot de passe <span class="req">*</span></label><input id="nu-pass" type="password" class="form-input" placeholder="Minimum 8 caractères"/></div>
+      <div class="form-group"><label class="form-label">Rôle</label>
+        <select id="nu-role" class="form-select">
+          <option value="user">👤 Utilisateur</option>
+          <option value="admin">👑 Administrateur</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="createNewUser()"><i class="fas fa-user-plus"></i> Créer l'utilisateur</button>
+    </div>`);
+}
+
+function openEditUserModal(id, name, role) {
+  openModal(`
+    <div class="modal-header"><h3 class="modal-title"><i class="fas fa-user-edit" style="margin-right:8px;color:#2563eb"></i>Modifier l'utilisateur</h3><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
+    <div class="form-group"><label class="form-label">Nom complet</label><input id="eu-name" class="form-input" value="${name}"/></div>
     <div class="form-group"><label class="form-label">Rôle</label>
-      <select id="nu-role" class="form-select">
-        <option value="user">Utilisateur</option>
-        <option value="admin">Admin</option>
+      <select id="eu-role" class="form-select">
+        <option value="user" ${role==='user'?'selected':''}>👤 Utilisateur</option>
+        <option value="admin" ${role==='admin'?'selected':''}>👑 Administrateur</option>
       </select>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
-      <button class="btn btn-primary" onclick="createNewUser()"><i class="fas fa-save"></i> Créer l'utilisateur</button>
+      <button class="btn btn-primary" onclick="saveEditUser('${id}')"><i class="fas fa-save"></i> Enregistrer</button>
     </div>`);
+}
+
+async function saveEditUser(id) {
+  const name = document.getElementById('eu-name')?.value?.trim();
+  const role = document.getElementById('eu-role')?.value;
+  if (!name) { toast('Nom requis', 'danger'); return; }
+  const { error } = await SB.updateProfile(id, { name, role });
+  if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
+  closeModal(); toast('Utilisateur modifié', 'success');
+  const cid = AppState.currentCompany?.id;
+  const { data } = await SB.getCompanyProfiles(cid);
+  _paramProfiles = data || [];
+  switchParamTab('utilisateurs', false);
+}
+
+async function toggleUserStatus(id, currentStatus) {
+  const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  const { error } = await SB.updateProfile(id, { status: newStatus });
+  if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
+  toast(newStatus === 'active' ? 'Utilisateur activé' : 'Utilisateur désactivé', 'info');
+  const cid = AppState.currentCompany?.id;
+  const { data } = await SB.getCompanyProfiles(cid);
+  _paramProfiles = data || [];
+  switchParamTab('utilisateurs', false);
+}
+
+function deleteUserConfirm(id, name) {
+  confirmDialog(`Supprimer l'utilisateur <strong>${name}</strong> ? Cette action est irréversible.`, async () => {
+    const { error } = await SB.deleteProfile(id);
+    if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
+    toast(`Utilisateur ${name} supprimé`, 'danger');
+    const cid = AppState.currentCompany?.id;
+    const { data } = await SB.getCompanyProfiles(cid);
+    _paramProfiles = data || [];
+    switchParamTab('utilisateurs', false);
+  });
 }
 
 async function createNewUser() {
@@ -1692,19 +2241,18 @@ async function createNewUser() {
   const role = document.getElementById('nu-role').value;
   if (!name || !email || !pass) { toast('Remplissez tous les champs', 'danger'); return; }
   if (pass.length < 6) { toast('Mot de passe trop court (min 6 caractères)', 'danger'); return; }
-
-  toast('Création du compte en cours...', 'info');
+  const btn = document.querySelector('.modal-footer .btn-primary');
+  if (btn) { btn.disabled=true; btn.innerHTML='<span class="loading-spinner"></span> Création...'; }
   const { data, error } = await SB.signUp(email, pass);
-  if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
-
-  await SB.createProfile({
-    id: data.user.id,
-    company_id: AppState.currentCompany.id,
-    name, email, role, status: 'active',
-  });
+  if (error) { if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur';} toast('Erreur : ' + error.message, 'danger'); return; }
+  const { error: pe } = await SB.createProfile({ id: data.user.id, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
+  if (pe) { toast('Compte créé mais profil échoué : ' + pe.message, 'warning'); }
+  else toast(`✅ ${name} ajouté ! Il recevra un email de confirmation.`, 'success');
   closeModal();
-  toast(`Utilisateur ${name} créé ! Il recevra un email de confirmation.`, 'success');
-  navigate('parametres');
+  const cid = AppState.currentCompany?.id;
+  const { data: profiles } = await SB.getCompanyProfiles(cid);
+  _paramProfiles = profiles || [];
+  switchParamTab('utilisateurs', false);
 }
 
 // ===== PDF (délégué à pdf.js) =====
