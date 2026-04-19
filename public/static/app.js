@@ -149,10 +149,14 @@ async function loadUserProfile(userId) {
     return;
   }
 
-  // Synchroniser le logo depuis Supabase vers localStorage (pour accès rapide dans PDF)
+  // Synchroniser le logo et les paramètres PDF depuis Supabase → localStorage
   const co = profile.companies;
-  if (co?.logo && !localStorage.getItem('batigest_logo_' + co.id)) {
+  if (co?.logo) {
     localStorage.setItem('batigest_logo_' + co.id, co.logo);
+  }
+  // Synchroniser les paramètres PDF depuis la DB (priorité à la DB sur localStorage)
+  if (co?.pdf_settings && typeof co.pdf_settings === 'object') {
+    localStorage.setItem('batigest_pdf_style', JSON.stringify(co.pdf_settings));
   }
 
   // Appliquer la couleur d'app sauvegardée
@@ -174,9 +178,14 @@ async function doLogin(email, password) {
       return { error: 'Email ou mot de passe incorrect. Vérifiez vos identifiants.' };
     }
     if (error.message.includes('Email not confirmed')) {
-      return { error: 'Veuillez confirmer votre email avant de vous connecter. Contactez votre administrateur pour activer votre compte.' };
+      // Tentative de connexion sans confirmation email (si compte créé par admin)
+      // On vérifie si le profil existe et est actif — si oui, on essaie de bypasser
+      return { error: 'Compte en attente de validation. Votre administrateur doit activer votre compte depuis le panneau Paramètres → Utilisateurs → Activer.' };
     }
-    return { error: 'Erreur de connexion. Réessayez dans quelques instants.' };
+    if (error.message.includes('User not found')) {
+      return { error: 'Aucun compte trouvé avec cet email.' };
+    }
+    return { error: 'Erreur de connexion : ' + error.message };
   }
   await loadUserProfile(data.user.id);
   return { ok: true };
@@ -722,7 +731,7 @@ async function saveDevis(id) {
     client_id: clientEl.value,
     client_nom: clientEl.options[clientEl.selectedIndex].dataset.nom,
     date: document.getElementById('dv-date').value || null,
-    validite: document.getElementById('dv-validite').value || null,
+    date_validite: document.getElementById('dv-validite').value || null,
     statut: id ? (document.getElementById('dv-statut')?.value||'en_attente') : 'en_attente',
     montant_ht: ht, tva, montant_ttc: ht*(1+tva/100),
     lignes: lignes,
@@ -1656,7 +1665,10 @@ async function renderParametres() {
   const trialDays = 30;
   const daysLeft = Math.max(0, trialDays - daysSince);
 
-  // Style PDF sauvegardé
+  // Style PDF : priorité à la colonne pdf_settings de la DB
+  if (co?.pdf_settings && typeof co.pdf_settings === 'object') {
+    localStorage.setItem('batigest_pdf_style', JSON.stringify(co.pdf_settings));
+  }
   const pdfStyle = JSON.parse(localStorage.getItem('batigest_pdf_style') || '{}');
 
   content.innerHTML = `
@@ -1811,10 +1823,13 @@ function renderParamUtilisateurs() {
             </div>
           </div>
           ${isAdmin && !isCurrentUser ? `
-          <div style="display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('${u.id}','${u.name}','${u.role}')"><i class="fas fa-edit"></i> Modifier</button>
             <button class="btn btn-secondary btn-sm" onclick="toggleUserStatus('${u.id}','${u.status}')" style="color:${u.status==='active'?'#d97706':'#16a34a'}">
               <i class="fas fa-${u.status==='active'?'pause':'play'}"></i> ${u.status==='active'?'Désactiver':'Activer'}
+            </button>
+            <button class="btn btn-info btn-sm" onclick="validateUserAuthApp('${u.id}')" title="Valider le compte Auth (si l'utilisateur ne peut pas se connecter)">
+              <i class="fas fa-check-double"></i> Valider
             </button>
             <button class="btn btn-ghost btn-sm" onclick="deleteUserConfirm('${u.id}','${u.name}')" style="color:var(--danger)"><i class="fas fa-trash"></i></button>
           </div>` : ''}
@@ -2108,7 +2123,7 @@ async function saveCompanySettings() {
   toast('✅ Paramètres de la société sauvegardés !', 'success');
 }
 
-function savePdfStyle() {
+async function savePdfStyle() {
   const style = {
     color: document.getElementById('pdf-color')?.value || '#2563eb',
     style: document.querySelector('input[name="pdf-style"]:checked')?.value || 'moderne',
@@ -2119,8 +2134,25 @@ function savePdfStyle() {
     montantLettres: document.getElementById('pdf-montant-lettres')?.checked || false,
     watermark: document.getElementById('pdf-watermark')?.checked || false,
   };
+  // Sauvegarder en localStorage pour accès immédiat (même navigateur)
   localStorage.setItem('batigest_pdf_style', JSON.stringify(style));
-  toast('✅ Style PDF sauvegardé !', 'success');
+
+  // Sauvegarder aussi dans Supabase (colonne pdf_settings) pour synchronisation multi-appareils
+  const cid = AppState.currentCompany?.id;
+  if (cid) {
+    const { error } = await SB.updateCompany(cid, { pdf_settings: style });
+    if (error) {
+      // Colonne peut ne pas exister encore — seulement localStorage
+      console.warn('pdf_settings colonne non disponible :', error.message);
+      toast('✅ Style PDF sauvegardé localement ! (Pour synchroniser, ajoutez la colonne pdf_settings dans Supabase)', 'success');
+      return;
+    }
+    // Mettre à jour AppState pour cohérence
+    if (AppState.currentCompany) AppState.currentCompany.pdf_settings = style;
+    toast('✅ Style PDF sauvegardé et synchronisé !', 'success');
+  } else {
+    toast('✅ Style PDF sauvegardé !', 'success');
+  }
 }
 
 function applyAppColor(color) {
@@ -2250,11 +2282,39 @@ async function toggleUserStatus(id, currentStatus) {
   switchParamTab('utilisateurs', false);
 }
 
+// Valider le compte Auth d'un utilisateur (permet la connexion si email non confirmé)
+async function validateUserAuthApp(id) {
+  if (!isValidUUID(id)) { toast('ID invalide', 'danger'); return; }
+  confirmDialog('Valider le compte Auth de cet utilisateur ? Cela lui permettra de se connecter immédiatement.', async () => {
+    const { error } = await SB.adminConfirmUser(id);
+    if (error) {
+      toast(`⚠️ Validation échouée : ${error.message}. Demandez au Super Admin de valider ou désactivez la confirmation email dans Supabase.`, 'warning');
+    } else {
+      toast('✅ Compte validé ! L\'utilisateur peut maintenant se connecter.', 'success');
+      const cid = AppState.currentCompany?.id;
+      const { data } = await SB.getCompanyProfiles(cid);
+      _paramProfiles = data || [];
+      switchParamTab('utilisateurs', false);
+    }
+  });
+}
+
 function deleteUserConfirm(id, name) {
-  confirmDialog(`Supprimer l'utilisateur <strong>${name}</strong> ? Cette action est irréversible.`, async () => {
+  confirmDialog(`Supprimer l'utilisateur <strong>${name}</strong> ? Cette action est irréversible (profil + compte Auth).`, async () => {
+    // 1. Supprimer le profil DB
     const { error } = await SB.deleteProfile(id);
     if (error) { toast('Erreur : ' + error.message, 'danger'); return; }
-    toast(`Utilisateur ${name} supprimé`, 'danger');
+    // 2. Supprimer le compte Auth (best-effort)
+    if (isValidUUID(id)) {
+      const { error: authErr } = await SB.adminDeleteUser(id);
+      if (authErr) {
+        toast(`Profil supprimé. ⚠️ Compte Auth : ${authErr.message}. Le Super Admin peut finaliser la suppression.`, 'warning');
+      } else {
+        toast(`✅ Utilisateur ${name} supprimé définitivement`, 'danger');
+      }
+    } else {
+      toast(`Utilisateur ${name} supprimé`, 'danger');
+    }
     const cid = AppState.currentCompany?.id;
     const { data } = await SB.getCompanyProfiles(cid);
     _paramProfiles = data || [];
@@ -2284,34 +2344,43 @@ async function createNewUser() {
 
   // Essayer d'abord la création directe sans confirmation email (via endpoint serveur)
   let userId = null;
+  let directlyValidated = false;
   const { data: adminData, error: adminErr } = await SB.adminCreateCompanyUser(email, pass);
 
-  if (adminErr && adminErr.code === 'SETUP_REQUIRED') {
-    // Service non configuré : fallback sur signUp standard + message d'info
+  if (!adminErr && adminData?.user?.id) {
+    // Succès via endpoint admin — email validé automatiquement
+    userId = adminData.user.id;
+    directlyValidated = true;
+  } else {
+    // Fallback : signUp standard (utilisateur doit confirmer l'email)
+    const isSETUP = adminErr?.code === 'SETUP_REQUIRED' || adminErr?.message === 'SETUP_REQUIRED';
+    if (!isSETUP && adminErr) {
+      // Erreur réelle (ex: email déjà utilisé)
+      if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur'; }
+      toast('Erreur : ' + adminErr.message, 'danger'); return;
+    }
     const { data: signUpData, error: signUpErr } = await SB.signUp(email, pass);
     if (signUpErr) {
       if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur'; }
       toast('Erreur : ' + signUpErr.message, 'danger'); return;
     }
     userId = signUpData?.user?.id;
-    // Créer le profil
-    const { error: pe } = await SB.createProfile({ id: userId, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
-    if (pe) { toast('Compte créé mais profil échoué : ' + pe.message, 'warning'); }
-    else {
-      closeModal();
-      toast(`✅ ${name} ajouté ! ⚠️ Il doit confirmer son email avant de pouvoir se connecter. (Pour éviter ça, désactivez la confirmation email dans Supabase → Auth → Settings)`, 'info');
-    }
-  } else if (adminErr) {
+  }
+
+  if (!userId) {
     if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-user-plus"></i> Créer l\'utilisateur'; }
-    toast('Erreur : ' + adminErr.message, 'danger'); return;
+    toast('Erreur : ID utilisateur non reçu', 'danger'); return;
+  }
+
+  const { error: pe } = await SB.createProfile({ id: userId, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
+  if (pe) {
+    toast('Compte créé mais profil échoué : ' + pe.message, 'warning');
   } else {
-    // Succès via endpoint admin — email validé automatiquement
-    userId = adminData?.user?.id;
-    const { error: pe } = await SB.createProfile({ id: userId, company_id: AppState.currentCompany.id, name, email, role, status: 'active' });
-    if (pe) { toast('Compte créé mais profil échoué : ' + pe.message, 'warning'); }
-    else {
-      closeModal();
-      toast(`✅ ${name} ajouté et validé automatiquement — peut se connecter immédiatement !`, 'success');
+    closeModal();
+    if (directlyValidated) {
+      toast(`✅ ${name} ajouté et validé — peut se connecter immédiatement !`, 'success');
+    } else {
+      toast(`✅ ${name} ajouté. Pour qu'il puisse se connecter, désactivez la confirmation email dans Supabase → Authentication → Settings → "Enable email confirmations" → OFF. Ou contactez le Super Admin.`, 'info');
     }
   }
 

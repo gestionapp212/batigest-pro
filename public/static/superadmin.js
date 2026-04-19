@@ -1,5 +1,6 @@
-// ===== SUPER ADMIN – BATIGEST PRO (Supabase) =====
+// ===== SUPER ADMIN – BATIGEST PRO =====
 
+// Cache des données pour éviter re-fetch constants
 const SA = {
   user: null,
   profile: null,
@@ -21,8 +22,8 @@ function saToast(msg, type = 'success') {
   t.className = `toast toast-${type}`;
   t.innerHTML = `<i class="fas ${icons[type]}" style="color:${colors[type]}"></i><span style="flex:1">${msg}</span><button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;color:var(--text-secondary)"><i class="fas fa-times"></i></button>`;
   c.appendChild(t);
-  setTimeout(() => t.style.opacity = '0', 3500);
-  setTimeout(() => t.remove(), 3800);
+  setTimeout(() => t.style.opacity = '0', 4000);
+  setTimeout(() => t.remove(), 4300);
 }
 
 function saModal(html, size = '') {
@@ -37,13 +38,19 @@ function closeSaModal() { const e = document.getElementById('sa-modal-overlay');
 
 function saConfirm(msg, onOk) {
   saModal(`
-    <div class="modal-header"><h3 class="modal-title"><i class="fas fa-question-circle" style="color:#d97706;margin-right:8px"></i>Confirmation</h3>
-    <button class="modal-close" onclick="closeSaModal()"><i class="fas fa-times"></i></button></div>
-    <p style="color:var(--text-secondary);margin-bottom:24px">${msg}</p>
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-exclamation-triangle" style="color:#d97706;margin-right:8px"></i>Confirmation</h3>
+      <button class="modal-close" onclick="closeSaModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <p style="color:var(--text-secondary);margin-bottom:24px;line-height:1.6">${msg}</p>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeSaModal()">Annuler</button>
-      <button class="btn btn-danger" onclick="closeSaModal();(${onOk.toString()})()"><i class="fas fa-trash"></i> Confirmer</button>
+      <button class="btn btn-danger" id="sa-confirm-ok"><i class="fas fa-trash"></i> Confirmer</button>
     </div>`);
+  document.getElementById('sa-confirm-ok').addEventListener('click', () => {
+    closeSaModal();
+    onOk();
+  });
 }
 
 function setTheme(t) {
@@ -55,7 +62,6 @@ function setTheme(t) {
 async function saLogin(email, pass) {
   const { data, error } = await SB.signIn(email, pass);
   if (error) return { error: error.message };
-
   const { data: profile, error: pe } = await SB.getProfile(data.user.id);
   if (pe || !profile || profile.role !== 'super_admin') {
     await SB.signOut();
@@ -78,17 +84,15 @@ async function renderSA() {
   const root = document.getElementById('sa-root');
   if (!root) return;
 
-  // Nettoyer toutes les clés de session autres que celle du super-admin
   const keysToRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && (key.startsWith('sb-') || key.startsWith('supabase.auth'))) {
-      if (key !== 'sb-sa-auth') keysToRemove.push(key);
+    if (key && (key.startsWith('sb-') || key.startsWith('supabase.auth')) && key !== 'sb-sa-auth') {
+      keysToRemove.push(key);
     }
   }
   keysToRemove.forEach(k => localStorage.removeItem(k));
 
-  // Vérifier session existante
   const session = await SB.getSession();
   if (session) {
     const { data: profile } = await SB.getProfile(session.user.id);
@@ -136,9 +140,6 @@ function renderSALogin() {
             <i class="fas fa-sign-in-alt"></i> Accéder au panneau
           </button>
         </form>
-        <div style="margin-top:20px;padding:12px;background:rgba(99,102,241,0.15);border-radius:8px;border:1px solid rgba(99,102,241,0.3);font-size:12px;color:#a5b4fc;text-align:center">
-          <i class="fas fa-shield-alt" style="margin-right:6px"></i>Accès réservé aux administrateurs de la plateforme
-        </div>
       </div>
     </div>
   </div>`;
@@ -176,7 +177,6 @@ async function renderSADashboard() {
   const root = document.getElementById('sa-root');
   root.innerHTML = `
   <div style="display:flex;min-height:100vh">
-    <!-- Sidebar -->
     <div id="sa-sidebar" style="width:240px;background:linear-gradient(180deg,#1e1b4b,#312e81);padding:20px 0;display:flex;flex-direction:column;flex-shrink:0">
       <div style="padding:0 16px 20px;border-bottom:1px solid rgba(255,255,255,0.1)">
         <div style="display:flex;align-items:center;gap:10px">
@@ -208,12 +208,9 @@ async function renderSADashboard() {
         </button>
       </div>
     </div>
-    <!-- Main -->
     <div style="flex:1;overflow-y:auto;background:var(--bg-main)">
       <div style="padding:24px;max-width:1200px;margin:0 auto" id="sa-content">
-        <div style="display:flex;align-items:center;justify-content:center;height:200px">
-          <div class="loading-spinner"></div>
-        </div>
+        <div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="loading-spinner"></div></div>
       </div>
     </div>
   </div>`;
@@ -223,17 +220,13 @@ async function renderSADashboard() {
 
 async function saNavigate(page) {
   SA.page = page;
-  // Highlight nav
   document.querySelectorAll('.sa-nav-item').forEach(el => {
-    el.style.background = 'transparent';
-    el.style.color = '#c7d2fe';
+    el.style.background = 'transparent'; el.style.color = '#c7d2fe';
   });
   const activeNav = document.getElementById('nav-' + page);
   if (activeNav) { activeNav.style.background = 'rgba(255,255,255,0.12)'; activeNav.style.color = '#fff'; }
-
   const content = document.getElementById('sa-content');
   content.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="loading-spinner"></div></div>`;
-
   if (page === 'dashboard') await renderSAStats(content);
   else if (page === 'companies') await renderSACompanies(content);
   else if (page === 'users') await renderSAUsers(content);
@@ -245,7 +238,6 @@ async function renderSAStats(content) {
   const [companiesRes, usersRes] = await Promise.all([SB.getAllCompanies(), SB.getAllUsers()]);
   const companies = companiesRes.data || [];
   const users = usersRes.data || [];
-
   const active = companies.filter(c => c.status === 'active').length;
   const suspended = companies.filter(c => c.status === 'suspended').length;
   const activeUsers = users.filter(u => u.status === 'active').length;
@@ -267,27 +259,25 @@ async function renderSAStats(content) {
       <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text-primary)">
         <i class="fas fa-building" style="color:#4f46e5;margin-right:6px"></i>Dernières sociétés inscrites
       </h3>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary)">SOCIÉTÉ</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary)">PLAN</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary)">STATUT</th>
+            <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary)">DATE</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${companies.slice(0, 5).map(co => `
             <tr style="border-bottom:1px solid var(--border)">
-              <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary);font-weight:600">SOCIÉTÉ</th>
-              <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary);font-weight:600">PLAN</th>
-              <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary);font-weight:600">STATUT</th>
-              <th style="text-align:left;padding:8px 12px;font-size:12px;color:var(--text-secondary);font-weight:600">DATE</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${companies.slice(0, 5).map(co => `
-              <tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:10px 12px;font-weight:600;color:var(--text-primary)">${co.name}</td>
-                <td style="padding:10px 12px">${planBadge(co.plan)}</td>
-                <td style="padding:10px 12px">${statusBadge(co.status)}</td>
-                <td style="padding:10px 12px;color:var(--text-secondary);font-size:12px">${fmtDate(co.created_at)}</td>
-              </tr>`).join('') || `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text-secondary)">Aucune société</td></tr>`}
-          </tbody>
-        </table>
-      </div>
+              <td style="padding:10px 12px;font-weight:600;color:var(--text-primary)">${_esc(co.name)}</td>
+              <td style="padding:10px 12px">${planBadge(co.plan)}</td>
+              <td style="padding:10px 12px">${statusBadge(co.status)}</td>
+              <td style="padding:10px 12px;color:var(--text-secondary);font-size:12px">${fmtDate(co.created_at)}</td>
+            </tr>`).join('') || `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text-secondary)">Aucune société</td></tr>`}
+        </tbody>
+      </table>
     </div>`;
 }
 
@@ -304,126 +294,134 @@ function saStatCard(label, val, icon, color) {
 }
 
 function planBadge(plan) {
-  const map = { basic: ['#64748b', 'Basic'], pro: ['#2563eb', 'Pro'], business: ['#7c3aed', 'Business'] };
+  const map = { basic: ['#64748b', 'Basic'], pro: ['#2563eb', 'Pro'], business: ['#7c3aed', 'Business'], enterprise: ['#0891b2', 'Enterprise'] };
   const [color, label] = map[plan] || ['#64748b', plan || '–'];
   return `<span style="background:${color}22;color:${color};padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600">${label}</span>`;
 }
 
 function statusBadge(status) {
-  return status === 'active'
+  return (status === 'active' || !status)
     ? `<span style="background:#16a34a22;color:#16a34a;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-check" style="margin-right:3px"></i>Actif</span>`
     : `<span style="background:#dc262622;color:#dc2626;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-ban" style="margin-right:3px"></i>Suspendu</span>`;
 }
 
+// Échapper HTML pour éviter injection
+function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 // ========== GESTION SOCIÉTÉS ==========
 async function renderSACompanies(content) {
   const { data: companies } = await SB.getAllCompanies();
+  SA.data.companies = companies || [];
 
   content.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:4px">
           <i class="fas fa-building" style="color:#4f46e5;margin-right:8px"></i>Gestion des sociétés
         </h2>
-        <p style="color:var(--text-secondary);font-size:13px">${(companies || []).length} société(s) sur la plateforme</p>
+        <p style="color:var(--text-secondary);font-size:13px">${(companies||[]).length} société(s)</p>
       </div>
-      <button class="btn btn-primary" onclick="saNavigate('create-company')">
-        <i class="fas fa-plus"></i> Nouvelle société
-      </button>
+      <button class="btn btn-primary" onclick="saNavigate('create-company')"><i class="fas fa-plus"></i> Nouvelle société</button>
     </div>
     <div style="background:var(--bg-card);border-radius:16px;border:1px solid var(--border);overflow:hidden">
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse">
+        <table style="width:100%;border-collapse:collapse" id="companies-table">
           <thead style="background:var(--bg-main)">
             <tr>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">SOCIÉTÉ</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">CONTACT</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">PLAN</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">STATUT</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">DATE</th>
-              <th style="text-align:center;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">ACTIONS</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">SOCIÉTÉ</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">CONTACT</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">PLAN</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">STATUT</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">DATE</th>
+              <th style="text-align:center;padding:12px 16px;font-size:12px;color:var(--text-secondary)">ACTIONS</th>
             </tr>
           </thead>
-          <tbody>
-            ${(companies || []).map(co => `
-              <tr style="border-top:1px solid var(--border)" id="co-row-${co.id}">
+          <tbody id="companies-tbody">
+            ${(companies||[]).length === 0 ? `<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--text-secondary)"><i class="fas fa-building" style="font-size:32px;margin-bottom:12px;display:block;opacity:0.3"></i>Aucune société</td></tr>` : ''}
+            ${(companies||[]).map(co => {
+              const safeId = isValidUUID(co.id) ? co.id : '';
+              return `
+              <tr style="border-top:1px solid var(--border)">
                 <td style="padding:12px 16px">
-                  <div style="font-weight:700;color:var(--text-primary)">${co.name}</div>
-                  <div style="font-size:11px;color:var(--text-secondary)">${co.city || ''}</div>
+                  <div style="font-weight:700;color:var(--text-primary)">${_esc(co.name)}</div>
+                  <div style="font-size:11px;color:var(--text-secondary)">${_esc(co.city||'')}</div>
                 </td>
                 <td style="padding:12px 16px">
-                  <div style="font-size:13px;color:var(--text-primary)">${co.email || '–'}</div>
-                  <div style="font-size:11px;color:var(--text-secondary)">${co.phone || ''}</div>
+                  <div style="font-size:13px">${_esc(co.email||'–')}</div>
+                  <div style="font-size:11px;color:var(--text-secondary)">${_esc(co.phone||'')}</div>
                 </td>
                 <td style="padding:12px 16px">${planBadge(co.plan)}</td>
                 <td style="padding:12px 16px">${statusBadge(co.status)}</td>
                 <td style="padding:12px 16px;font-size:12px;color:var(--text-secondary)">${fmtDate(co.created_at)}</td>
-                <td style="padding:12px 16px;text-align:center">
-                  <div style="display:flex;gap:6px;justify-content:center">
-                    <button class="btn btn-sm btn-secondary" onclick="editCompany('${co.id}')" title="Modifier">
-                      <i class="fas fa-edit"></i>
+                <td style="padding:12px 16px">
+                  <div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap">
+                    ${safeId ? `
+                    <button class="btn btn-sm btn-secondary sa-edit-co" data-id="${safeId}" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm ${co.status==='active'?'btn-warning':'btn-success'} sa-toggle-co" data-id="${safeId}" data-status="${_esc(co.status||'active')}" title="${co.status==='active'?'Suspendre':'Activer'}">
+                      <i class="fas ${co.status==='active'?'fa-ban':'fa-check'}"></i>
                     </button>
-                    <button class="btn btn-sm ${co.status === 'active' ? 'btn-warning' : 'btn-success'}" 
-                      onclick="toggleCompanyStatus('${co.id}','${co.status}')" title="${co.status === 'active' ? 'Suspendre' : 'Activer'}">
-                      <i class="fas ${co.status === 'active' ? 'fa-ban' : 'fa-check'}"></i>
-                    </button>
-                    <button class="btn btn-sm btn-info" onclick="linkUserToCompany('${co.id}','${co.name}')" title="Lier un utilisateur">
-                      <i class="fas fa-user-plus"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteCompanySA('${co.id}')" title="Supprimer">
-                      <i class="fas fa-trash"></i>
-                    </button>
+                    <button class="btn btn-sm btn-info sa-link-user" data-id="${safeId}" data-name="${_esc(co.name)}" title="Ajouter utilisateur"><i class="fas fa-user-plus"></i></button>
+                    <button class="btn btn-sm btn-danger sa-delete-co" data-id="${safeId}" data-name="${_esc(co.name)}" title="Supprimer"><i class="fas fa-trash"></i></button>
+                    ` : `<span style="font-size:11px;color:#dc2626">ID invalide</span>`}
                   </div>
                 </td>
-              </tr>`).join('') || `<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--text-secondary)">
-                <i class="fas fa-building" style="font-size:32px;margin-bottom:12px;display:block;opacity:0.3"></i>
-                Aucune société enregistrée
-              </td></tr>`}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
     </div>`;
-}
 
-function isValidUUID(id) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  // Event delegation - pas d'inline onclick
+  document.getElementById('companies-tbody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!isValidUUID(id)) { saToast('ID société invalide', 'danger'); return; }
+
+    if (btn.classList.contains('sa-edit-co')) { await editCompany(id); }
+    else if (btn.classList.contains('sa-toggle-co')) { await toggleCompanyStatus(id, btn.dataset.status); }
+    else if (btn.classList.contains('sa-link-user')) { await linkUserToCompany(id, btn.dataset.name); }
+    else if (btn.classList.contains('sa-delete-co')) { await deleteCompanySA(id, btn.dataset.name); }
+  });
 }
 
 async function toggleCompanyStatus(id, currentStatus) {
-  if (!isValidUUID(id)) { saToast('ID société invalide – supprimez cette société via SQL Supabase', 'danger'); return; }
   const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-  const { data, error } = await SB.updateCompany(id, { status: newStatus });
+  const { error } = await SB.updateCompany(id, { status: newStatus });
   if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
-  saToast(`Société ${newStatus === 'active' ? 'activée' : 'suspendue'}`, 'success');
+  saToast(`Société ${newStatus === 'active' ? '✅ activée' : '🔒 suspendue'}`, newStatus === 'active' ? 'success' : 'warning');
   await saNavigate('companies');
 }
 
-async function deleteCompanySA(id) {
-  if (!isValidUUID(id)) { saToast('ID invalide – société non Supabase, supprimez-la via le SQL Editor', 'danger'); return; }
-  saConfirm('⚠️ Supprimer définitivement cette société et TOUS ses utilisateurs ? Cette action est irréversible !', async () => {
-    // 1. Récupérer tous les profils de la société pour supprimer leurs comptes Auth
+async function deleteCompanySA(id, name) {
+  saConfirm(`⚠️ Supprimer définitivement <strong>${_esc(name)}</strong> et TOUS ses utilisateurs ?<br/><span style="font-size:12px;color:#dc2626">Cette action est irréversible.</span>`, async () => {
+    const btn = document.getElementById('sa-confirm-ok');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span> Suppression...'; }
+
+    // 1. Récupérer les profils pour supprimer leurs comptes Auth
     const { data: profiles } = await SB.getCompanyProfiles(id);
-    const profileIds = (profiles || []).map(p => p.id);
+    const profileIds = (profiles || []).map(p => p.id).filter(isValidUUID);
 
     // 2. Supprimer les profils DB
     const { error: pe } = await SB.deleteProfilesByCompany(id);
     if (pe) { saToast('Erreur profils : ' + pe.message, 'danger'); return; }
 
-    // 3. Supprimer les comptes Auth pour chaque profil
-    let authErrors = 0;
+    // 3. Supprimer les comptes Auth
+    let authOk = 0, authFail = 0;
     for (const uid of profileIds) {
       const { error: ae } = await SB.adminDeleteUser(uid);
-      if (ae) authErrors++;
+      if (ae) authFail++; else authOk++;
     }
 
     // 4. Supprimer la société
     const { error } = await SB.deleteCompany(id);
-    if (error) { saToast('Erreur suppression société : ' + error.message, 'danger'); return; }
+    if (error) { saToast('Erreur société : ' + error.message, 'danger'); return; }
 
-    if (authErrors > 0) {
-      saToast(`Société supprimée. ⚠️ ${authErrors} compte(s) Auth n'ont pas pu être supprimés automatiquement — vérifiez dans Supabase → Auth → Users.`, 'warning');
+    if (authFail > 0) {
+      saToast(`Société supprimée. ⚠️ ${authOk} compte(s) Auth supprimés, ${authFail} échoué(s). Vérifiez Supabase → Auth → Users.`, 'warning');
     } else {
-      saToast('✅ Société et tous ses utilisateurs supprimés définitivement', 'success');
+      saToast(`✅ Société et ${profileIds.length} utilisateur(s) supprimés définitivement`, 'success');
     }
     await saNavigate('companies');
   });
@@ -434,112 +432,119 @@ async function editCompany(id) {
   if (!co) { saToast('Société introuvable', 'danger'); return; }
   saModal(`
     <div class="modal-header">
-      <h3 class="modal-title"><i class="fas fa-building" style="margin-right:8px;color:#4f46e5"></i>Modifier la société</h3>
+      <h3 class="modal-title"><i class="fas fa-building" style="margin-right:8px;color:#4f46e5"></i>Modifier – ${_esc(co.name)}</h3>
       <button class="modal-close" onclick="closeSaModal()"><i class="fas fa-times"></i></button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom <span class="req">*</span></label><input id="ec-name" class="form-input" value="${co.name || ''}"/></div>
-      <div class="form-group"><label class="form-label">Email</label><input id="ec-email" class="form-input" value="${co.email || ''}"/></div>
-      <div class="form-group"><label class="form-label">Téléphone</label><input id="ec-phone" class="form-input" value="${co.phone || ''}"/></div>
-      <div class="form-group"><label class="form-label">Ville</label><input id="ec-city" class="form-input" value="${co.city || ''}"/></div>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom <span class="req">*</span></label><input id="ec-name" class="form-input" value="${_esc(co.name||'')}"/></div>
+      <div class="form-group"><label class="form-label">Email</label><input id="ec-email" class="form-input" value="${_esc(co.email||'')}"/></div>
+      <div class="form-group"><label class="form-label">Téléphone</label><input id="ec-phone" class="form-input" value="${_esc(co.phone||'')}"/></div>
+      <div class="form-group"><label class="form-label">Ville</label><input id="ec-city" class="form-input" value="${_esc(co.city||'')}"/></div>
       <div class="form-group"><label class="form-label">Plan</label>
         <select id="ec-plan" class="form-select">
-          <option value="basic" ${co.plan === 'basic' ? 'selected' : ''}>Basic</option>
-          <option value="pro" ${co.plan === 'pro' ? 'selected' : ''}>Pro</option>
-          <option value="business" ${co.plan === 'business' ? 'selected' : ''}>Business</option>
+          ${['basic','pro','business','enterprise'].map(p => `<option value="${p}" ${co.plan===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
         </select>
       </div>
       <div class="form-group"><label class="form-label">Statut</label>
         <select id="ec-status" class="form-select">
-          <option value="active" ${co.status === 'active' ? 'selected' : ''}>Actif</option>
-          <option value="suspended" ${co.status === 'suspended' ? 'selected' : ''}>Suspendu</option>
+          <option value="active" ${co.status==='active'?'selected':''}>✅ Actif</option>
+          <option value="suspended" ${co.status==='suspended'?'selected':''}>🔒 Suspendu</option>
         </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">Date d'expiration abonnement</label>
+        <input type="date" id="ec-expiry" class="form-input" value="${co.expires_at ? co.expires_at.split('T')[0] : ''}"/>
+        <p style="font-size:11px;color:var(--text-secondary);margin-top:4px">Laisser vide = pas d'expiration</p>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeSaModal()">Annuler</button>
-      <button class="btn btn-primary" onclick="saveEditCompany('${co.id}')"><i class="fas fa-save"></i> Sauvegarder</button>
+      <button class="btn btn-primary" id="ec-save-btn"><i class="fas fa-save"></i> Sauvegarder</button>
     </div>`, 'modal-lg');
-}
 
-async function saveEditCompany(id) {
-  const updates = {
-    name: document.getElementById('ec-name').value.trim(),
-    email: document.getElementById('ec-email').value.trim(),
-    phone: document.getElementById('ec-phone').value.trim(),
-    city: document.getElementById('ec-city').value.trim(),
-    plan: document.getElementById('ec-plan').value,
-    status: document.getElementById('ec-status').value,
-  };
-  if (!updates.name) { saToast('Le nom est requis', 'danger'); return; }
-  const { error } = await SB.updateCompany(id, updates);
-  if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
-  closeSaModal();
-  saToast('Société mise à jour', 'success');
-  await saNavigate('companies');
+  document.getElementById('ec-save-btn').addEventListener('click', async () => {
+    const updates = {
+      name: document.getElementById('ec-name').value.trim(),
+      email: document.getElementById('ec-email').value.trim(),
+      phone: document.getElementById('ec-phone').value.trim(),
+      city: document.getElementById('ec-city').value.trim(),
+      plan: document.getElementById('ec-plan').value,
+      status: document.getElementById('ec-status').value,
+      expires_at: document.getElementById('ec-expiry').value || null,
+    };
+    if (!updates.name) { saToast('Nom requis', 'danger'); return; }
+    const btn = document.getElementById('ec-save-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span>';
+    const { error } = await SB.updateCompany(id, updates);
+    if (error) { saToast('Erreur : ' + error.message, 'danger'); btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Sauvegarder'; return; }
+    closeSaModal();
+    saToast('✅ Société mise à jour', 'success');
+    await saNavigate('companies');
+  });
 }
 
 // ========== LIER UTILISATEUR À SOCIÉTÉ ==========
 async function linkUserToCompany(companyId, companyName) {
-  if (!isValidUUID(companyId)) { saToast('ID société invalide', 'danger'); return; }
   const { data: users } = await SB.getAllUsers();
   const unlinked = (users || []).filter(u => !u.company_id && u.role !== 'super_admin');
 
   saModal(`
     <div class="modal-header">
-      <h3 class="modal-title"><i class="fas fa-user-plus" style="margin-right:8px;color:#2563eb"></i>Lier un utilisateur à ${companyName}</h3>
+      <h3 class="modal-title"><i class="fas fa-user-plus" style="margin-right:8px;color:#2563eb"></i>Ajouter un utilisateur à ${_esc(companyName)}</h3>
       <button class="modal-close" onclick="closeSaModal()"><i class="fas fa-times"></i></button>
     </div>
-    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">
-      Sélectionnez un utilisateur existant <b>sans société</b> à associer, ou créez un nouveau compte admin.
-    </p>
+    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Créer un nouveau compte admin ou lier un compte existant.</p>
+    
+    <!-- Création nouveau compte -->
+    <div style="background:var(--bg-main);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-user-plus" style="margin-right:6px;color:#2563eb"></i>Créer un nouveau compte</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom <span class="req">*</span></label><input id="new-link-name" class="form-input" placeholder="Prénom Nom"/></div>
+        <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input id="new-link-email" type="email" class="form-input" placeholder="admin@societe.ma"/></div>
+        <div class="form-group"><label class="form-label">Mot de passe <span class="req">*</span></label><input id="new-link-pass" type="password" class="form-input" placeholder="Min 6 caractères"/></div>
+        <div class="form-group"><label class="form-label">Rôle</label>
+          <select id="new-link-role" class="form-select">
+            <option value="admin">👑 Admin</option>
+            <option value="user">👤 Utilisateur</option>
+          </select>
+        </div>
+      </div>
+      <div id="link-err" style="display:none;color:#dc2626;font-size:12px;margin-top:8px;padding:8px;background:rgba(220,38,38,0.08);border-radius:6px"></div>
+      <button class="btn btn-primary btn-sm" id="do-create-link-btn" style="margin-top:10px"><i class="fas fa-plus"></i> Créer et lier</button>
+    </div>
+
     ${unlinked.length > 0 ? `
-    <div class="form-group">
-      <label class="form-label">Utilisateur existant sans société</label>
-      <select id="link-user-select" class="form-select">
-        <option value="">-- Sélectionner --</option>
-        ${unlinked.map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Rôle</label>
-      <select id="link-user-role" class="form-select">
-        <option value="admin">Admin</option>
-        <option value="user">Utilisateur</option>
-      </select>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeSaModal()">Annuler</button>
-      <button class="btn btn-primary" onclick="doLinkUser('${companyId}')">
-        <i class="fas fa-link"></i> Lier cet utilisateur
-      </button>
-    </div>` : `
-    <div style="background:rgba(37,99,235,0.08);border-radius:10px;padding:14px;border:1px solid rgba(37,99,235,0.2);margin-bottom:16px">
-      <i class="fas fa-info-circle" style="color:#2563eb;margin-right:6px"></i>
-      <span style="font-size:13px;color:var(--text-secondary)">Tous les utilisateurs sont déjà liés à une société.</span>
-    </div>
-    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Créez un nouveau compte admin pour cette société :</p>
-    <div class="form-group"><label class="form-label">Nom <span class="req">*</span></label><input id="new-link-name" class="form-input" placeholder="Prénom Nom"/></div>
-    <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input id="new-link-email" type="email" class="form-input" placeholder="admin@societe.ma"/></div>
-    <div class="form-group"><label class="form-label">Mot de passe <span class="req">*</span></label><input id="new-link-pass" type="password" class="form-input" placeholder="Min. 6 caractères"/></div>
-    <div id="link-err" style="display:none;color:#dc2626;font-size:12px;margin-top:8px"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeSaModal()">Annuler</button>
-      <button class="btn btn-primary" onclick="doCreateAndLink('${companyId}')">
-        <i class="fas fa-plus"></i> Créer et lier
-      </button>
-    </div>`}
+    <!-- Lier compte existant -->
+    <div style="background:var(--bg-main);border-radius:10px;padding:16px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--text-primary)"><i class="fas fa-link" style="margin-right:6px;color:#16a34a"></i>Lier un compte existant</div>
+      <div class="form-group">
+        <select id="link-user-select" class="form-select">
+          <option value="">-- Sélectionner --</option>
+          ${unlinked.map(u => `<option value="${u.id}">${_esc(u.name)} (${_esc(u.email)})</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-success btn-sm" id="do-link-btn" style="margin-top:8px"><i class="fas fa-link"></i> Lier cet utilisateur</button>
+    </div>` : ''}
   `);
+
+  document.getElementById('do-create-link-btn').addEventListener('click', async () => {
+    await doCreateAndLink(companyId);
+  });
+
+  if (unlinked.length > 0) {
+    document.getElementById('do-link-btn').addEventListener('click', async () => {
+      await doLinkUser(companyId);
+    });
+  }
 }
 
 async function doLinkUser(companyId) {
   const userId = document.getElementById('link-user-select').value;
-  const role = document.getElementById('link-user-role').value;
-  if (!userId) { saToast('Sélectionnez un utilisateur', 'warning'); return; }
-  const { error } = await SB.updateProfile(userId, { company_id: companyId, role });
+  if (!userId || !isValidUUID(userId)) { saToast('Sélectionnez un utilisateur valide', 'warning'); return; }
+  const { error } = await SB.updateProfile(userId, { company_id: companyId, role: 'admin' });
   if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
   closeSaModal();
-  saToast('Utilisateur lié à la société avec succès !', 'success');
+  saToast('✅ Utilisateur lié à la société !', 'success');
   await saNavigate('companies');
 }
 
@@ -547,48 +552,60 @@ async function doCreateAndLink(companyId) {
   const name = document.getElementById('new-link-name')?.value?.trim();
   const email = document.getElementById('new-link-email')?.value?.trim();
   const pass = document.getElementById('new-link-pass')?.value;
+  const role = document.getElementById('new-link-role')?.value || 'admin';
   const errEl = document.getElementById('link-err');
+  errEl.style.display = 'none';
+
   if (!name || !email || !pass) { errEl.textContent = 'Tous les champs sont requis'; errEl.style.display = 'block'; return; }
   if (pass.length < 6) { errEl.textContent = 'Mot de passe trop court (min 6 car.)'; errEl.style.display = 'block'; return; }
 
-  // Essayer création sans confirmation email via endpoint serveur admin
-  let userId = null;
-  let needsEmailConfirm = false;
-  const { data: adminData, error: adminErr } = await SB.adminCreateUser(email, pass);
-  if (adminErr) {
-    // Fallback sur signUp standard
-    const { data, error } = await SB.signUp(email, pass);
-    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
-    userId = data?.user?.id;
-    needsEmailConfirm = true;
-  } else {
-    userId = adminData?.user?.id;
-  }
-  if (!userId) { errEl.textContent = 'ID utilisateur non reçu'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('do-create-link-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="loading-spinner"></span> Création...';
 
-  const { error: pe } = await SB.createProfile({ id: userId, company_id: companyId, name, email, role: 'admin', status: 'active' });
-  if (pe) { errEl.textContent = pe.message; errEl.style.display = 'block'; return; }
+  let userId = null;
+  let confirmedDirectly = false;
+
+  // Essayer via API Admin (sans confirmation email)
+  const { data: adminData, error: adminErr } = await SB.adminCreateUser(email, pass);
+  if (!adminErr && adminData?.user?.id) {
+    userId = adminData.user.id;
+    confirmedDirectly = true;
+  } else {
+    // Fallback: signUp standard
+    const { data: sd, error: se } = await SB.signUp(email, pass);
+    if (se) { errEl.textContent = 'Erreur Auth : ' + se.message; errEl.style.display = 'block'; btn.disabled=false; btn.innerHTML='<i class="fas fa-plus"></i> Créer et lier'; return; }
+    userId = sd?.user?.id;
+  }
+
+  if (!userId || !isValidUUID(userId)) {
+    errEl.textContent = 'ID utilisateur non reçu de Supabase'; errEl.style.display = 'block';
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-plus"></i> Créer et lier'; return;
+  }
+
+  const { error: pe } = await SB.createProfile({ id: userId, company_id: companyId, name, email, role, status: 'active' });
+  if (pe) { errEl.textContent = 'Erreur profil : ' + pe.message; errEl.style.display = 'block'; btn.disabled=false; btn.innerHTML='<i class="fas fa-plus"></i> Créer et lier'; return; }
+
   closeSaModal();
-  saToast(needsEmailConfirm
-    ? `Compte ${email} créé et lié. ⚠️ L'utilisateur doit confirmer son email.`
-    : `✅ Compte ${email} créé, lié et validé — peut se connecter immédiatement !`, 'success');
+  saToast(confirmedDirectly
+    ? `✅ ${name} créé et validé — peut se connecter immédiatement !`
+    : `${name} créé. ⚠️ Confirmation email requise (configurez la service_role_key)`, confirmedDirectly ? 'success' : 'warning');
   await saNavigate('companies');
 }
 
 // ========== GESTION UTILISATEURS ==========
 async function renderSAUsers(content) {
-  const { data: users } = await SB.getAllUsers();
-  const { data: companies } = await SB.getAllCompanies();
+  const [{ data: users }, { data: companies }] = await Promise.all([SB.getAllUsers(), SB.getAllCompanies()]);
+  SA.data.users = users || [];
   const coMap = {};
   (companies || []).forEach(c => coMap[c.id] = c.name);
 
   content.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
         <h2 style="font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:4px">
           <i class="fas fa-users" style="color:#4f46e5;margin-right:8px"></i>Tous les utilisateurs
         </h2>
-        <p style="color:var(--text-secondary);font-size:13px">${(users || []).length} utilisateur(s)</p>
+        <p style="color:var(--text-secondary);font-size:13px">${(users||[]).filter(u=>u.role!=='super_admin').length} utilisateur(s)</p>
       </div>
     </div>
     <div style="background:var(--bg-card);border-radius:16px;border:1px solid var(--border);overflow:hidden">
@@ -596,82 +613,113 @@ async function renderSAUsers(content) {
         <table style="width:100%;border-collapse:collapse">
           <thead style="background:var(--bg-main)">
             <tr>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">UTILISATEUR</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">SOCIÉTÉ</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">RÔLE</th>
-              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">STATUT</th>
-              <th style="text-align:center;padding:12px 16px;font-size:12px;color:var(--text-secondary);font-weight:600">ACTIONS</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">UTILISATEUR</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">SOCIÉTÉ</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">RÔLE</th>
+              <th style="text-align:left;padding:12px 16px;font-size:12px;color:var(--text-secondary)">STATUT</th>
+              <th style="text-align:center;padding:12px 16px;font-size:12px;color:var(--text-secondary)">ACTIONS</th>
             </tr>
           </thead>
-          <tbody>
-            ${(users || []).filter(u => u.role !== 'super_admin').map(u => {
+          <tbody id="users-tbody">
+            ${(users||[]).filter(u => u.role !== 'super_admin').length === 0
+              ? `<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-secondary)">Aucun utilisateur</td></tr>` : ''}
+            ${(users||[]).filter(u => u.role !== 'super_admin').map(u => {
               const initials = (u.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
               const colors = ['#2563eb','#7c3aed','#16a34a','#d97706','#dc2626','#0891b2'];
-              const col = colors[(u.name||'').charCodeAt(0)%colors.length] || '#2563eb';
-              const uStatus = u.status || 'active';
-              const isSuspended = uStatus === 'suspended';
+              const col = colors[(u.name||'A').charCodeAt(0) % colors.length];
+              const isSuspended = u.status === 'suspended';
+              const safeId = isValidUUID(u.id) ? u.id : '';
               return `
-              <tr style="border-top:1px solid var(--border);${isSuspended ? 'opacity:0.65;' : ''}">
+              <tr style="border-top:1px solid var(--border)${isSuspended ? ';opacity:0.65' : ''}">
                 <td style="padding:12px 16px">
                   <div style="display:flex;align-items:center;gap:10px">
-                    <div style="width:36px;height:36px;border-radius:10px;background:${col}22;border:2px solid ${col}44;display:flex;align-items:center;justify-content:center;color:${col};font-weight:800;font-size:13px;flex-shrink:0">${initials}</div>
+                    <div style="width:36px;height:36px;border-radius:10px;background:${col}22;border:2px solid ${col}44;display:flex;align-items:center;justify-content:center;color:${col};font-weight:800;font-size:13px;flex-shrink:0">${_esc(initials)}</div>
                     <div>
-                      <div style="font-weight:600;color:var(--text-primary)">${u.name}</div>
-                      <div style="font-size:11px;color:var(--text-secondary)">${u.email}</div>
+                      <div style="font-weight:600;color:var(--text-primary)">${_esc(u.name||'–')}</div>
+                      <div style="font-size:11px;color:var(--text-secondary)">${_esc(u.email||'–')}</div>
                     </div>
                   </div>
                 </td>
-                <td style="padding:12px 16px;font-size:13px;color:var(--text-secondary)">${coMap[u.company_id] || '<span style="color:#dc2626;font-size:11px">Sans société</span>'}</td>
+                <td style="padding:12px 16px;font-size:13px">${coMap[u.company_id] ? _esc(coMap[u.company_id]) : '<span style="color:#dc2626;font-size:11px">Sans société</span>'}</td>
                 <td style="padding:12px 16px">
-                  <span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-secondary'}">${u.role === 'admin' ? '👑 Admin' : '👤 Utilisateur'}</span>
+                  <span class="badge ${u.role==='admin'?'badge-info':'badge-secondary'}">${u.role==='admin'?'👑 Admin':'👤 Utilisateur'}</span>
                 </td>
                 <td style="padding:12px 16px">
                   ${isSuspended
                     ? `<span style="background:#dc262622;color:#dc2626;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-ban" style="margin-right:3px"></i>Suspendu</span>`
                     : `<span style="background:#16a34a22;color:#16a34a;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-check" style="margin-right:3px"></i>Actif</span>`}
                 </td>
-                <td style="padding:12px 16px;text-align:center">
-                  <div style="display:flex;gap:6px;justify-content:center">
-                    <button class="btn btn-sm ${isSuspended ? 'btn-success' : 'btn-warning'}"
-                      onclick="toggleUserStatusSA('${u.id}','${uStatus}')"
-                      title="${isSuspended ? 'Activer' : 'Suspendre'}">
-                      <i class="fas ${isSuspended ? 'fa-check' : 'fa-ban'}"></i>
-                      ${isSuspended ? 'Activer' : 'Suspendre'}
+                <td style="padding:12px 16px">
+                  <div style="display:flex;gap:5px;justify-content:center">
+                    ${safeId ? `
+                    <button class="btn btn-sm btn-info sa-validate-user"
+                      data-id="${safeId}" title="Valider le compte Auth (permet la connexion)"
+                      style="padding:4px 8px;font-size:11px">
+                      <i class="fas fa-check-double"></i> Valider
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteUserSA('${u.id}')" title="Supprimer définitivement">
+                    <button class="btn btn-sm ${isSuspended?'btn-success':'btn-warning'} sa-toggle-user" 
+                      data-id="${safeId}" data-status="${isSuspended?'suspended':'active'}"
+                      title="${isSuspended?'Activer':'Suspendre'}">
+                      <i class="fas ${isSuspended?'fa-check':'fa-ban'}"></i>
+                      ${isSuspended?'Activer':'Suspendre'}
+                    </button>
+                    <button class="btn btn-sm btn-danger sa-delete-user" data-id="${safeId}" data-name="${_esc(u.name||'')}" title="Supprimer">
                       <i class="fas fa-trash"></i>
                     </button>
+                    ` : `<span style="font-size:10px;color:#dc2626">ID invalide</span>`}
                   </div>
                 </td>
               </tr>`;
-            }).join('') || `<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-secondary)">Aucun utilisateur</td></tr>`}
+            }).join('')}
           </tbody>
         </table>
       </div>
     </div>`;
+
+  // Event delegation
+  document.getElementById('users-tbody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!isValidUUID(id)) { saToast('ID invalide', 'danger'); return; }
+    if (btn.classList.contains('sa-validate-user')) { await validateUserAuth(id); }
+    else if (btn.classList.contains('sa-toggle-user')) { await toggleUserStatusSA(id, btn.dataset.status); }
+    else if (btn.classList.contains('sa-delete-user')) { await deleteUserSA(id, btn.dataset.name); }
+  });
 }
 
 async function toggleUserStatusSA(userId, currentStatus) {
-  const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+  const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
   const { error } = await SB.updateProfile(userId, { status: newStatus });
   if (error) { saToast('Erreur : ' + error.message, 'danger'); return; }
-  saToast(newStatus === 'active' ? '✅ Utilisateur activé – peut se connecter' : '🔒 Utilisateur suspendu – accès bloqué', newStatus === 'active' ? 'success' : 'warning');
+  saToast(newStatus === 'active' ? '✅ Utilisateur activé — peut se connecter' : '🔒 Utilisateur suspendu — accès bloqué', newStatus === 'active' ? 'success' : 'warning');
   await saNavigate('users');
 }
 
-async function deleteUserSA(id) {
-  saConfirm('Supprimer définitivement cet utilisateur ? (profil + compte Auth)', async () => {
-    // 1. Supprimer le profil de la table profiles
+async function validateUserAuth(userId) {
+  saConfirm('Valider le compte Auth de cet utilisateur ? (confirme l\'email et permet la connexion)', async () => {
+    const { error } = await SB.adminConfirmUser(userId);
+    if (error) {
+      saToast(`⚠️ Validation Auth échouée : ${error.message}. Configurez SUPABASE_SERVICE_KEY dans Cloudflare.`, 'warning');
+    } else {
+      saToast('✅ Compte Auth validé ! L\'utilisateur peut maintenant se connecter.', 'success');
+    }
+    await saNavigate('users');
+  });
+}
+
+async function deleteUserSA(id, name) {
+  saConfirm(`Supprimer définitivement <strong>${_esc(name)}</strong> ?<br/><span style="font-size:12px;color:var(--text-secondary)">Profil DB + compte Auth Supabase</span>`, async () => {
+    // 1. Supprimer profil DB
     const { error: pe } = await SB.deleteProfile(id);
     if (pe) { saToast('Erreur profil : ' + pe.message, 'danger'); return; }
 
-    // 2. Supprimer le compte Auth via endpoint serveur
+    // 2. Supprimer Auth via API Admin
     const { error: ae } = await SB.adminDeleteUser(id);
     if (ae) {
-      // L'utilisateur Auth n'a pas pu être supprimé (service_key non configurée ?)
-      saToast(`Profil supprimé. ⚠️ Compte Auth non supprimé : ${ae.message}. Supprimez-le manuellement dans Supabase → Auth → Users.`, 'warning');
+      saToast(`Profil supprimé. ⚠️ Auth non supprimé : ${ae.message}`, 'warning');
     } else {
-      saToast('✅ Utilisateur supprimé définitivement (profil + Auth)', 'success');
+      saToast('✅ Utilisateur supprimé définitivement', 'success');
     }
     await saNavigate('users');
   });
@@ -685,23 +733,27 @@ function renderCreateCompanyForm(content) {
         <h2 style="font-size:22px;font-weight:800;color:var(--text-primary);margin-bottom:4px">
           <i class="fas fa-plus-circle" style="color:#4f46e5;margin-right:8px"></i>Créer une nouvelle société
         </h2>
-        <p style="color:var(--text-secondary);font-size:13px">Un compte admin sera automatiquement créé pour la société</p>
+        <p style="color:var(--text-secondary);font-size:13px">Un compte admin sera automatiquement créé et validé</p>
       </div>
       <div style="background:var(--bg-card);border-radius:16px;padding:24px;border:1px solid var(--border)">
         <h3 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
           <i class="fas fa-building" style="margin-right:6px;color:#4f46e5"></i>Informations société
         </h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
-          <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom de la société <span class="req">*</span></label><input id="nc-name" class="form-input" placeholder="Ex: BTP Maroc SARL"/></div>
-          <div class="form-group"><label class="form-label">Email</label><input id="nc-email" type="email" class="form-input" placeholder="contact@société.ma"/></div>
+          <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom <span class="req">*</span></label><input id="nc-name" class="form-input" placeholder="Ex: BTP Maroc SARL"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input id="nc-email" type="email" class="form-input" placeholder="contact@societe.ma"/></div>
           <div class="form-group"><label class="form-label">Téléphone</label><input id="nc-phone" class="form-input" placeholder="0522..."/></div>
           <div class="form-group"><label class="form-label">Ville</label><input id="nc-city" class="form-input" placeholder="Casablanca"/></div>
           <div class="form-group"><label class="form-label">Plan</label>
             <select id="nc-plan" class="form-select">
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-              <option value="business">Business</option>
+              <option value="basic">Basic (3 utilisateurs)</option>
+              <option value="pro">Pro (5 utilisateurs)</option>
+              <option value="business" selected>Business (10 utilisateurs)</option>
+              <option value="enterprise">Enterprise (illimité)</option>
             </select>
+          </div>
+          <div class="form-group"><label class="form-label">Expiration abonnement</label>
+            <input type="date" id="nc-expiry" class="form-input"/>
           </div>
         </div>
         <h3 style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">
@@ -709,18 +761,18 @@ function renderCreateCompanyForm(content) {
         </h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
           <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom de l'admin <span class="req">*</span></label><input id="nc-admin-name" class="form-input" placeholder="Prénom Nom"/></div>
-          <div class="form-group"><label class="form-label">Email admin <span class="req">*</span></label><input id="nc-admin-email" type="email" class="form-input" placeholder="admin@société.ma"/></div>
+          <div class="form-group"><label class="form-label">Email admin <span class="req">*</span></label><input id="nc-admin-email" type="email" class="form-input" placeholder="admin@societe.ma"/></div>
           <div class="form-group"><label class="form-label">Mot de passe <span class="req">*</span></label><input id="nc-admin-pass" type="password" class="form-input" placeholder="Min. 6 caractères"/></div>
         </div>
         <div id="nc-error" style="display:none;color:#dc2626;font-size:13px;padding:10px;background:rgba(220,38,38,0.08);border-radius:8px;margin-top:12px;border-left:3px solid #dc2626"></div>
         <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
           <button class="btn btn-secondary" onclick="saNavigate('companies')">Annuler</button>
-          <button class="btn btn-primary" onclick="createCompanySA()" id="nc-btn">
-            <i class="fas fa-plus"></i> Créer la société
-          </button>
+          <button class="btn btn-primary" id="nc-btn"><i class="fas fa-plus"></i> Créer la société</button>
         </div>
       </div>
     </div>`;
+
+  document.getElementById('nc-btn').addEventListener('click', createCompanySA);
 }
 
 async function createCompanySA() {
@@ -729,6 +781,7 @@ async function createCompanySA() {
   const phone = document.getElementById('nc-phone').value.trim();
   const city = document.getElementById('nc-city').value.trim();
   const plan = document.getElementById('nc-plan').value;
+  const expiry = document.getElementById('nc-expiry').value;
   const adminName = document.getElementById('nc-admin-name').value.trim();
   const adminEmail = document.getElementById('nc-admin-email').value.trim();
   const adminPass = document.getElementById('nc-admin-pass').value;
@@ -750,21 +803,27 @@ async function createCompanySA() {
 
   try {
     // 1. Créer la société
-    const { data: company, error: ce } = await SB.createCompany({ name, email, phone, city, plan, status: 'active' });
-    if (ce) throw new Error('Erreur création société : ' + ce.message);
+    const coData = { name, email, phone, city, plan, status: 'active' };
+    if (expiry) coData.expires_at = expiry;
+    const { data: company, error: ce } = await SB.createCompany(coData);
+    if (ce) throw new Error('Erreur société : ' + ce.message);
 
-    // 2. Créer le compte auth admin (sans confirmation email via endpoint serveur)
+    // 2. Créer le compte Auth (sans confirmation email via API Admin)
     let userId = null;
+    let directConfirm = false;
+
     const { data: adminData, error: adminErr } = await SB.adminCreateUser(adminEmail, adminPass);
-    if (adminErr) {
-      // Fallback sur signUp standard
+    if (!adminErr && adminData?.user?.id) {
+      userId = adminData.user.id;
+      directConfirm = true;
+    } else {
+      // Fallback: signUp standard
       const { data: signUpData, error: ae } = await SB.signUp(adminEmail, adminPass);
       if (ae) throw new Error('Erreur création compte : ' + ae.message);
       userId = signUpData?.user?.id;
-    } else {
-      userId = adminData?.user?.id;
     }
-    if (!userId) throw new Error('ID utilisateur non reçu de Supabase');
+
+    if (!userId || !isValidUUID(userId)) throw new Error('ID utilisateur invalide reçu de Supabase');
 
     // 3. Créer le profil admin
     const { error: pe } = await SB.createProfile({
@@ -775,12 +834,14 @@ async function createCompanySA() {
       role: 'admin',
       status: 'active',
     });
-    if (pe) throw new Error('Erreur création profil : ' + pe.message);
+    if (pe) throw new Error('Erreur profil : ' + pe.message);
 
-    const msg = adminErr
-      ? `✅ Société "${name}" créée ! Admin : ${adminEmail} ⚠️ (email de confirmation requis)`
-      : `✅ Société "${name}" créée ! Admin : ${adminEmail} — Peut se connecter immédiatement !`;
-    saToast(msg, 'success');
+    saToast(
+      directConfirm
+        ? `✅ Société "${name}" créée ! Admin ${adminEmail} peut se connecter immédiatement.`
+        : `Société "${name}" créée. ⚠️ Admin doit confirmer son email.`,
+      directConfirm ? 'success' : 'warning'
+    );
     await saNavigate('companies');
   } catch (err) {
     errEl.textContent = err.message;
