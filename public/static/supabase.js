@@ -6,7 +6,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Utilisée UNIQUEMENT sur la page /super-admin (protégée par auth super_admin)
 // Permet la création/suppression d'utilisateurs Auth sans confirmation email
 // NE PAS utiliser sur des pages publiques non protégées
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpldnFtdmJmbWFrdGprcm5keXR3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjUyNzA2NCwiZXhwIjoyMDkyMTAzMDY0fQ.Ry8VqeHRHMGmLDpUl2JgHlOJXKzVEHwGqKCJjt7TKXI';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpldnFtdmJmbWFrdGprcm5keXR3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjUyNzA2NCwiZXhwIjoyMDkyMTAzMDY0fQ.I1wy2q52g2AVc9JtRV747M9HoCj4ATQcJFvoLHm6wQY';
 
 // Clé de stockage différente selon la page pour isoler les sessions
 const _isSuperAdmin = window.location.pathname.includes('super-admin');
