@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🚀 Guide Déploiement Cloudflare — GestionApp v5.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"/>
+<style>
+:root {
+  --bg:       #0d1117;
+  --bg2:      #161b22;
+  --bg3:      #21262d;
+  --border:   #30363d;
+  --text:     #e6edf3;
+  --text2:    #8b949e;
+  --text3:    #6e7681;
+  --primary:  #58a6ff;
+  --success:  #3fb950;
+  --warning:  #d29922;
+  --danger:   #f85149;
+  --purple:   #bc8cff;
+  --orange:   #f0883e;
+  --cyan:     #39d353;
+  --radius:   8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── HEADER ── */
+header {
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+.header-logo {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, #f6821f, #faad3f);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 800; color: white;
+}
+header h1 { font-size: 18px; font-weight: 700; color: var(--text); }
+header p  { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.header-badge {
+  margin-left: auto;
+  padding: 4px 12px;
+  background: rgba(88,166,255,.12);
+  border: 1px solid rgba(88,166,255,.3);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── LAYOUT ── */
+.container { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+
+/* ── PROGRESS BAR ── */
+.progress-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 32px;
+}
+.progress-title {
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .5px;
+  margin-bottom: 12px;
+}
+.progress-steps {
+  display: flex;
+  gap: 0;
+  counter-reset: step;
+}
+.progress-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+}
+.progress-step::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: calc(-50% + 14px);
+  right: calc(50% + 14px);
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+.progress-step:first-child::before { display: none; }
+.progress-step.done::before  { background: var(--success); }
+.progress-step.active::before { background: var(--primary); }
+
+.step-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  position: relative; z-index: 1;
+  transition: all .2s;
+}
+.progress-step.done .step-dot  { background: var(--success); border-color: var(--success); color: white; }
+.progress-step.active .step-dot { background: var(--primary); border-color: var(--primary); color: white; }
+.step-label {
+  font-size: 10px; color: var(--text3); margin-top: 6px;
+  text-align: center; white-space: nowrap;
+}
+.progress-step.done  .step-label  { color: var(--success); }
+.progress-step.active .step-label { color: var(--primary); }
+
+.progress-bar-track {
+  height: 4px;
+  background: var(--bg3);
+  border-radius: 2px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  border-radius: 2px;
+  transition: width .4s ease;
+  width: 0%;
+}
+
+/* ── STEP CARD ── */
+.step-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: hidden;
+  transition: all .2s;
+}
+.step-card.active { border-color: var(--primary); box-shadow: 0 0 0 1px rgba(88,166,255,.2); }
+.step-card.done   { border-color: rgba(63,185,80,.3); }
+.step-card.locked { opacity: .5; pointer-events: none; }
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  cursor: pointer;
+  user-select: none;
+}
+.step-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--text2);
+  flex-shrink: 0;
+}
+.step-card.active .step-num { background: var(--primary); border-color: var(--primary); color: white; }
+.step-card.done   .step-num { background: var(--success); border-color: var(--success); color: white; }
+
+.step-info { flex: 1; }
+.step-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.step-subtitle { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.step-status-badge {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.badge-pending  { background: rgba(139,148,158,.1); color: var(--text2); border: 1px solid var(--border); }
+.badge-active   { background: rgba(88,166,255,.12); color: var(--primary); border: 1px solid rgba(88,166,255,.3); }
+.badge-done     { background: rgba(63,185,80,.1); color: var(--success); border: 1px solid rgba(63,185,80,.3); }
+
+.step-chevron { color: var(--text3); font-size: 12px; transition: transform .2s; }
+.step-card.open .step-chevron { transform: rotate(90deg); }
+
+.step-body { display: none; padding: 0 20px 20px; }
+.step-card.open .step-body { display: block; }
+
+/* ── COMMAND BLOCK ── */
+.cmd-label {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .4px;
+  margin-bottom: 6px; margin-top: 16px;
+}
+.cmd-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #c9d1d9;
+  position: relative;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.7;
+}
+.cmd-block .comment { color: var(--text3); }
+.cmd-block .cmd     { color: var(--cyan); }
+.cmd-block .arg     { color: var(--orange); }
+.cmd-block .flag    { color: var(--purple); }
+.cmd-block .dynamic { color: var(--warning); font-weight: 600; }
+
+.copy-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.copy-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+.copy-btn.copied { background: var(--success); color: white; border-color: var(--success); }
+
+/* ── INPUT GROUP ── */
+.input-group {
+  margin-top: 14px;
+}
+.input-label {
+  display: block;
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  margin-bottom: 6px;
+}
+.input-row { display: flex; gap: 8px; }
+.cf-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border .15s;
+}
+.cf-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(88,166,255,.1); }
+.cf-input::placeholder { color: var(--text3); }
+.cf-input.valid   { border-color: var(--success); }
+.cf-input.invalid { border-color: var(--danger); }
+
+.btn {
+  padding: 10px 18px;
+  border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { opacity: .85; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { opacity: .85; }
+.btn-outline {
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── ALERT / INFO ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  line-height: 1.6;
+}
+.alert i { flex-shrink: 0; margin-top: 2px; }
+.alert-info    { background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.2); color: #93c5fd; }
+.alert-success { background: rgba(63,185,80,.08); border: 1px solid rgba(63,185,80,.2); color: #86efac; }
+.alert-warning { background: rgba(210,153,34,.08); border: 1px solid rgba(210,153,34,.2); color: #fcd34d; }
+.alert-danger  { background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.2); color: #fca5a5; }
+
+/* ── RESULT BOX ── */
+.result-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-top: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text2);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.result-box.visible { border-color: var(--success); color: var(--success); }
+
+/* ── SECTION DIVIDER ── */
+.section-note {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+.section-note strong { color: var(--text); }
+.section-note code {
+  background: var(--bg3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--orange);
+}
+
+/* ── FILE UPDATE PREVIEW ── */
+.file-preview {
+  background: var(--bg);
+  border: 1px solid rgba(88,166,255,.2);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+.file-preview-header {
+  background: rgba(88,166,255,.08);
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid rgba(88,166,255,.2);
+}
+.file-preview-body {
+  padding: 12px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #c9d1d9;
+  line-height: 1.8;
+}
+.line-old { color: var(--danger); text-decoration: line-through; opacity: .6; }
+.line-new { color: var(--success); }
+
+/* ── COMPLETE BANNER ── */
+.complete-banner {
+  display: none;
+  text-align: center;
+  padding: 40px;
+  background: var(--bg2);
+  border: 1px solid rgba(63,185,80,.3);
+  border-radius: var(--radius);
+  margin-top: 32px;
+}
+.complete-banner.visible { display: block; }
+.complete-banner h2 { font-size: 24px; color: var(--success); margin-bottom: 12px; }
+.complete-banner p { color: var(--text2); font-size: 14px; }
+.complete-links {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.complete-link {
+  padding: 10px 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  transition: all .15s;
+}
+.complete-link:hover { border-color: var(--primary); color: var(--primary); }
+.complete-link.primary-link { background: var(--primary); border-color: var(--primary); color: white; }
+.complete-link.primary-link:hover { opacity: .85; }
+
+/* ── GENERATED SQL BOX ── */
+.sql-box {
+  background: var(--bg);
+  border: 1px solid rgba(63,185,80,.3);
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 14px;
+  display: none;
+}
+.sql-box.visible { display: block; }
+.sql-box pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--success);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .container { padding: 16px; }
+  .progress-steps { display: none; }
+  header { padding: 16px; }
+  .step-title { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">☁️</div>
+  <div>
+    <h1>Guide de Déploiement Cloudflare</h1>
+    <p>GestionApp v5.0 — GitHub + Cloudflare Workers + D1</p>
+  </div>
+  <span class="header-badge">v5.0</span>
+</header>
+
+<div class="container">
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap">
+    <div class="progress-title">Progression du déploiement</div>
+    <div class="progress-steps">
+      <div class="progress-step active" onclick="jumpTo(1)" id="ps-1">
+        <div class="step-dot">1</div>
+        <div class="step-label">Worker</div>
+      </div>
+      <div class="progress-step" onclick="jumpTo(2)" id="ps-2">
+        <div class="step-dot">2</div>
+        <div class="step-label">Base D1</div>
+      </div>
+      <div class="progress-step" onclick="jumpTo(3)" id="ps-3">
+        <div class="step-dot">3</div>
+        <div class="step-label">SuperAdmin</div>
+      </div>
+      <div class="progress-step" onclick="jumpTo(4)" id="ps-4">
+        <div class="step-dot">4</div>
+        <div class="step-label">Secrets</div>
+      </div>
+      <div class="progress-step" onclick="jumpTo(5)" id="ps-5">
+        <div class="step-dot">5</div>
+        <div class="step-label">URL Worker</div>
+      </div>
+      <div class="progress-step" onclick="jumpTo(6)" id="ps-6">
+        <div class="step-dot">6</div>
+        <div class="step-label">Pages</div>
+      </div>
+      <div class="progress-step" onclick="jumpTo(7)" id="ps-7">
+        <div class="step-dot">7</div>
+        <div class="step-label">Test Final</div>
+      </div>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 1 : Déployer le Worker
+  ═══════════════════════════════════════════ -->
+  <div class="step-card active open" id="step-1">
+    <div class="step-header" onclick="toggleStep(1)">
+      <div class="step-num">1</div>
+      <div class="step-info">
+        <div class="step-title">🔧 Créer et déployer le Worker Cloudflare</div>
+        <div class="step-subtitle">Installation de Wrangler CLI + déploiement du fichier <code style="font-family:monospace;color:#f0883e">workers/gestapp-api/src/index.js</code></div>
+      </div>
+      <span class="step-status-badge badge-active" id="badge-1">En cours</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+      <div class="section-note">
+        Vous avez besoin de <strong>Node.js</strong> (v18+) et d'un compte <strong>Cloudflare gratuit</strong>.
+        Ces commandes sont à exécuter dans votre terminal, dans le dossier racine du projet.
+      </div>
+
+      <div class="cmd-label">📦 Installer Wrangler CLI</div>
+      <div class="cmd-block">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">npm</span> install <span class="flag">-g</span> <span class="arg">wrangler</span></div>
+
+      <div class="cmd-label">🔑 Se connecter à Cloudflare</div>
+      <div class="cmd-block">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">wrangler</span> login</div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>Un navigateur s'ouvre pour autoriser Wrangler. Cliquez <strong>"Allow"</strong> dans Cloudflare Dashboard.</div>
+      </div>
+
+      <div class="cmd-label">🚀 Déployer le Worker (depuis la racine du projet)</div>
+      <div class="cmd-block">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">cd</span> <span class="arg">workers/gestapp-api</span>
+<span class="cmd">wrangler</span> deploy</div>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div><strong>Erreur normale à cette étape :</strong> Le Worker va se déployer mais les requêtes à la DB échoueront tant que D1 n'est pas configuré. C'est normal !</div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">✅ Coller l'URL du Worker affichée dans le terminal (ex: <code style="font-family:monospace;color:#f0883e">https://gestapp-api.VOTRE_SOUS_DOMAINE.workers.dev</code>)</label>
+        <div class="input-row">
+          <input class="cf-input" id="worker-url" type="url"
+            placeholder="https://gestapp-api.xxxxxxxxxx.workers.dev"
+            oninput="validateWorkerUrl(this)"/>
+          <button class="btn btn-success" onclick="confirmStep1()">
+            <i class="fas fa-check"></i> Confirmer
+          </button>
+        </div>
+        <div id="worker-url-hint" style="font-size:11px;color:var(--text3);margin-top:5px">
+          Format attendu : https://gestapp-api.[sous-domaine].workers.dev
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 2 : Base D1
+  ═══════════════════════════════════════════ -->
+  <div class="step-card locked" id="step-2">
+    <div class="step-header" onclick="toggleStep(2)">
+      <div class="step-num">2</div>
+      <div class="step-info">
+        <div class="step-title">🗄️ Créer la base de données D1 (SQLite)</div>
+        <div class="step-subtitle">Initialise toutes les tables : platform_users, companies, clients, devis, factures…</div>
+      </div>
+      <span class="step-status-badge badge-pending" id="badge-2">En attente</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+      <div class="section-note">
+        Cloudflare D1 est une base SQLite serverless <strong>gratuite jusqu'à 5 Go</strong>.
+        Elle remplace entièrement Supabase PostgreSQL.
+      </div>
+
+      <div class="cmd-label">📦 Créer la base D1</div>
+      <div class="cmd-block">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">wrangler</span> d1 create <span class="arg">gestapp-db</span></div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>Le terminal affiche un bloc comme : <br>
+        <code style="font-family:monospace;color:#fcd34d">[[d1_databases]]<br>database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"</code><br>
+        Copiez ce <strong>database_id</strong> ci-dessous.
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">🆔 Coller le <strong>database_id</strong> D1 généré</label>
+        <div class="input-row">
+          <input class="cf-input" id="d1-id"
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            oninput="validateUUID(this, 'd1-id')"/>
+          <button class="btn btn-outline btn-sm" onclick="autoUpdateWrangler()">
+            <i class="fas fa-magic"></i> Mettre à jour wrangler.toml
+          </button>
+        </div>
+      </div>
+
+      <div class="cmd-label">📋 Initialiser le schéma (toutes les tables)</div>
+      <div class="cmd-block" id="cmd-schema">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">wrangler</span> d1 execute <span class="arg">gestapp-db</span> <span class="flag">--file=schema.sql</span> <span class="flag">--remote</span></div>
+
+      <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        <div>Cette commande crée automatiquement : <strong>platform_users, companies, clients, devis, factures, paiements, chantiers, stock, fournisseurs, garanties, agenda, taches, pipeline, galerie, audit_logs</strong></div>
+      </div>
+
+      <div class="input-group" style="margin-top:16px">
+        <button class="btn btn-success" onclick="confirmStep2()">
+          <i class="fas fa-check"></i> Schéma initialisé avec succès
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 3 : Créer le SuperAdmin
+  ═══════════════════════════════════════════ -->
+  <div class="step-card locked" id="step-3">
+    <div class="step-header" onclick="toggleStep(3)">
+      <div class="step-num">3</div>
+      <div class="step-info">
+        <div class="step-title">👑 Créer le compte SuperAdmin</div>
+        <div class="step-subtitle">Génère le hash PBKDF2 du mot de passe et insère le compte dans D1</div>
+      </div>
+      <span class="step-status-badge badge-pending" id="badge-3">En attente</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+      <div class="section-note">
+        Renseignez l'email et le mot de passe du SuperAdmin. Le SQL sera généré automatiquement.
+        <br><strong>⚠️ Changez le mot de passe après la première connexion !</strong>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+        <div class="input-group" style="margin-top:0">
+          <label class="input-label">📧 Email SuperAdmin</label>
+          <input class="cf-input" id="sa-email" type="email"
+            value="said.hamdaoui1984@gmail.com"
+            oninput="generateSeed()"/>
+        </div>
+        <div class="input-group" style="margin-top:0">
+          <label class="input-label">🔑 Mot de passe (min 12 caractères)</label>
+          <div class="input-row">
+            <input class="cf-input" id="sa-password" type="text"
+              placeholder="MotDePasse2025!"
+              oninput="generateSeed()"/>
+            <button class="btn btn-outline btn-sm" onclick="genPassword()" title="Générer un mot de passe">
+              <i class="fas fa-dice"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">👤 Nom complet</label>
+        <input class="cf-input" id="sa-name" type="text"
+          value="Said Hamdaoui"
+          oninput="generateSeed()"/>
+      </div>
+
+      <div class="cmd-label">⚙️ Générer le hash et le SQL d'insertion</div>
+      <div class="cmd-block" id="cmd-seed">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">node</span> <span class="arg">seed.js</span> "<span class="dynamic" id="seed-pw-preview">VotreMDP2025!</span>"</div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>Le terminal affiche un <strong>SQL INSERT</strong>. Copiez-le entier et collez-le dans le champ ci-dessous.<br>
+        Ou utilisez le générateur intégré ci-dessous pour obtenir le SQL directement.</div>
+      </div>
+
+      <div class="input-group">
+        <button class="btn btn-primary" onclick="generateSQL()" id="btn-gen-sql">
+          <i class="fas fa-magic"></i> Générer le SQL SuperAdmin (dans le navigateur)
+        </button>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">
+          Cette génération se fait côté navigateur via Web Crypto API (identique au Worker)
+        </div>
+      </div>
+
+      <div class="sql-box" id="sql-result">
+        <pre id="sql-text"></pre>
+        <div class="input-row">
+          <button class="btn btn-outline btn-sm" onclick="copySql()">
+            <i class="fas fa-copy"></i> Copier le SQL
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="openD1Console()">
+            <i class="fas fa-external-link-alt"></i> Ouvrir Console D1
+          </button>
+        </div>
+      </div>
+
+      <div class="cmd-label">▶️ Exécuter le SQL dans D1 (via CLI)</div>
+      <div class="cmd-block" id="cmd-insert-sa">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="comment"># Coller le SQL généré ici :</span>
+<span class="cmd">wrangler</span> d1 execute <span class="arg">gestapp-db</span> <span class="flag">--command=</span><span class="dynamic">"VOTRE_SQL_ICI"</span> <span class="flag">--remote</span></div>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-lightbulb"></i>
+        <div><strong>Alternative plus simple :</strong> Ouvrez <a href="https://dash.cloudflare.com" target="_blank" style="color:var(--primary)">dash.cloudflare.com</a> → Workers & Pages → D1 → <strong>gestapp-db</strong> → Console, et collez le SQL directement.</div>
+      </div>
+
+      <div class="input-group" style="margin-top:16px">
+        <button class="btn btn-success" onclick="confirmStep3()">
+          <i class="fas fa-check"></i> SuperAdmin créé avec succès
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 4 : Secrets Cloudflare
+  ═══════════════════════════════════════════ -->
+  <div class="step-card locked" id="step-4">
+    <div class="step-header" onclick="toggleStep(4)">
+      <div class="step-num">4</div>
+      <div class="step-info">
+        <div class="step-title">🔐 Configurer les secrets du Worker</div>
+        <div class="step-subtitle">JWT_SECRET et SUPERADMIN_EMAIL — stockés chiffrés dans Cloudflare</div>
+      </div>
+      <span class="step-status-badge badge-pending" id="badge-4">En attente</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+      <div class="section-note">
+        Les secrets ne sont <strong>jamais</strong> visibles dans le code source.
+        Ils sont injectés de manière sécurisée dans <code>env.JWT_SECRET</code> et <code>env.SUPERADMIN_EMAIL</code>.
+      </div>
+
+      <div class="cmd-label">🎲 Générer JWT_SECRET (clé aléatoire sécurisée)</div>
+      <div class="input-group" style="margin-top:8px">
+        <div class="input-row">
+          <input class="cf-input" id="jwt-secret-val" type="text"
+            placeholder="Cliquez 'Générer' pour créer une clé sécurisée"
+            readonly/>
+          <button class="btn btn-primary" onclick="generateJWTSecret()">
+            <i class="fas fa-random"></i> Générer
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="copyJwtSecret()">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">
+          Clé 256 bits aléatoire — générée localement, jamais envoyée nulle part
+        </div>
+      </div>
+
+      <div class="cmd-label">📋 Ajouter JWT_SECRET</div>
+      <div class="cmd-block">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="comment"># Dans workers/gestapp-api/ :</span>
+<span class="cmd">wrangler</span> secret put <span class="arg">JWT_SECRET</span>
+<span class="comment"># → Collez la clé générée ci-dessus quand le terminal la demande</span></div>
+
+      <div class="cmd-label">📋 Ajouter SUPERADMIN_EMAIL</div>
+      <div class="cmd-block" id="cmd-sa-email">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="cmd">wrangler</span> secret put <span class="arg">SUPERADMIN_EMAIL</span>
+<span class="comment"># → Saisissez l'email : <span class="dynamic" id="sa-email-preview">said.hamdaoui1984@gmail.com</span></span></div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-shield-alt"></i>
+        <div>Alternative via Dashboard : <a href="https://dash.cloudflare.com" target="_blank" style="color:var(--primary)">dash.cloudflare.com</a> → Workers & Pages → <strong>gestapp-api</strong> → Settings → Variables → Encrypt</div>
+      </div>
+
+      <div class="input-group" style="margin-top:16px">
+        <button class="btn btn-success" onclick="confirmStep4()">
+          <i class="fas fa-check"></i> Secrets configurés
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 5 : Mettre à jour l'URL dans les fichiers
+  ═══════════════════════════════════════════ -->
+  <div class="step-card locked" id="step-5">
+    <div class="step-header" onclick="toggleStep(5)">
+      <div class="step-num">5</div>
+      <div class="step-info">
+        <div class="step-title">🔗 Mettre à jour l'URL du Worker dans les fichiers</div>
+        <div class="step-subtitle">Remplace l'URL placeholder dans cloudflare-client.js et admin/index.html</div>
+      </div>
+      <span class="step-status-badge badge-pending" id="badge-5">En attente</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+      <div class="section-note">
+        Deux fichiers contiennent le placeholder <code>https://gestapp-api.digital-pro.workers.dev</code> qui doit être remplacé par l'URL réelle de votre Worker.
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">🌐 URL réelle du Worker (de l'Étape 1)</label>
+        <input class="cf-input" id="worker-url-step5"
+          placeholder="https://gestapp-api.XXXX.workers.dev"
+          readonly/>
+        <div style="font-size:11px;color:var(--text3);margin-top:5px">
+          Renseignée automatiquement depuis l'Étape 1
+        </div>
+      </div>
+
+      <div class="file-preview">
+        <div class="file-preview-header">
+          <i class="fas fa-file-code"></i>
+          gestapp212/js/cloudflare-client.js — ligne 18
+        </div>
+        <div class="file-preview-body">
+          <div class="line-old">const CF_API_BASE = 'https://gestapp-api.digital-pro.workers.dev';</div>
+          <div class="line-new" id="preview-cf-client">const CF_API_BASE = '<span id="new-url-1">https://gestapp-api.XXXX.workers.dev</span>';</div>
+        </div>
+      </div>
+
+      <div class="file-preview" style="margin-top:10px">
+        <div class="file-preview-header">
+          <i class="fas fa-file-code"></i>
+          admin/index.html — ligne ~591
+        </div>
+        <div class="file-preview-body">
+          <div class="line-old">const CF_API = 'https://gestapp-api.digital-pro.workers.dev';</div>
+          <div class="line-new">const CF_API = '<span id="new-url-2">https://gestapp-api.XXXX.workers.dev</span>';</div>
+        </div>
+      </div>
+
+      <div class="cmd-label">⚡ Commandes de remplacement automatique</div>
+      <div class="cmd-block" id="cmd-sed">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="comment"># Linux / macOS :</span>
+<span class="cmd">sed</span> <span class="flag">-i</span> <span class="arg">'s|https://gestapp-api.digital-pro.workers.dev|<span class="dynamic" id="sed-url">VOTRE_URL_WORKER</span>|g'</span> gestapp212/js/cloudflare-client.js admin/index.html
+
+<span class="comment"># Windows PowerShell :</span>
+<span class="cmd">(Get-Content</span> gestapp212/js/cloudflare-client.js<span class="cmd">)</span> -replace 'gestapp-api.digital-pro.workers.dev','<span class="dynamic" id="sed-url-win">VOTRE_URL_WORKER</span>' | <span class="cmd">Set-Content</span> gestapp212/js/cloudflare-client.js</div>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-edit"></i>
+        <div>Vous pouvez aussi éditer manuellement les deux fichiers et remplacer <code>gestapp-api.digital-pro.workers.dev</code> par votre URL.</div>
+      </div>
+
+      <div class="input-group" style="margin-top:16px">
+        <button class="btn btn-success" onclick="confirmStep5()">
+          <i class="fas fa-check"></i> URLs mises à jour
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 6 : Cloudflare Pages
+  ═══════════════════════════════════════════ -->
+  <div class="step-card locked" id="step-6">
+    <div class="step-header" onclick="toggleStep(6)">
+      <div class="step-num">6</div>
+      <div class="step-info">
+        <div class="step-title">📄 Déployer sur Cloudflare Pages (hébergement statique)</div>
+        <div class="step-subtitle">Connecte GitHub → Cloudflare Pages pour déploiement automatique</div>
+      </div>
+      <span class="step-status-badge badge-pending" id="badge-6">En attente</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+      <div class="section-note">
+        Cloudflare Pages héberge les fichiers statiques (HTML/CSS/JS).
+        Chaque <code>git push</code> déclenche un nouveau déploiement automatique.
+      </div>
+
+      <div class="cmd-label">📤 Pousser le code sur GitHub d'abord</div>
+      <div class="cmd-block">
+        <button class="copy-btn" onclick="copyCmd(this)"><i class="fas fa-copy"></i> Copier</button>
+<span class="comment"># Depuis la racine du projet :</span>
+<span class="cmd">git</span> add .
+<span class="cmd">git</span> commit <span class="flag">-m</span> <span class="arg">"v5.0: migration Cloudflare Workers + D1"</span>
+<span class="cmd">git</span> push origin main</div>
+
+      <div class="cmd-label">🌐 Connecter GitHub → Cloudflare Pages</div>
+      <div class="alert alert-info">
+        <i class="fas fa-list-ol"></i>
+        <div>
+          <strong>Dans Cloudflare Dashboard :</strong>
+          <ol style="margin:8px 0 0 20px;line-height:2">
+            <li>Ouvrir <a href="https://dash.cloudflare.com" target="_blank" style="color:var(--primary)">dash.cloudflare.com</a> → <strong>Workers & Pages</strong></li>
+            <li>Cliquer <strong>"Create application"</strong> → <strong>"Pages"</strong> → <strong>"Connect to Git"</strong></li>
+            <li>Sélectionner votre repo GitHub <strong>digital-pro</strong></li>
+            <li>Framework preset : <strong>None</strong></li>
+            <li>Build command : <strong>(vide)</strong></li>
+            <li>Output directory : <strong>(vide)</strong></li>
+            <li>Cliquer <strong>"Save and Deploy"</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">🌍 URL Cloudflare Pages générée (ex: digital-pro.pages.dev)</label>
+        <input class="cf-input" id="pages-url" type="url"
+          placeholder="https://digital-pro.pages.dev"
+          oninput="updatePagesUrl(this)"/>
+      </div>
+
+      <div class="cmd-label">🔗 Configurer domaines custom (optionnel)</div>
+      <div class="alert alert-info">
+        <i class="fas fa-globe"></i>
+        <div>
+          Dans Cloudflare Pages → votre projet → <strong>Custom domains</strong> :<br>
+          • <code>gestapp.digital-pro.live</code> → pointe vers le projet Pages<br>
+          • <code>famille.digital-pro.live</code> → idem<br>
+          • <code>calcul.digital-pro.live</code> → idem
+        </div>
+      </div>
+
+      <div class="input-group" style="margin-top:16px">
+        <button class="btn btn-success" onclick="confirmStep6()">
+          <i class="fas fa-check"></i> Pages déployé avec succès
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ÉTAPE 7 : Test Final
+  ═══════════════════════════════════════════ -->
+  <div class="step-card locked" id="step-7">
+    <div class="step-header" onclick="toggleStep(7)">
+      <div class="step-num">7</div>
+      <div class="step-info">
+        <div class="step-title">✅ Test final — Vérifier que tout fonctionne</div>
+        <div class="step-subtitle">Tests de connexion Worker, portail admin, et GestApp</div>
+      </div>
+      <span class="step-status-badge badge-pending" id="badge-7">En attente</span>
+      <i class="fas fa-chevron-right step-chevron"></i>
+    </div>
+    <div class="step-body">
+
+      <div class="cmd-label">🔍 Test 1 : Vérifier que le Worker répond</div>
+      <div class="input-row" style="margin-top:8px;gap:10px;align-items:center">
+        <input class="cf-input" id="test-worker-url" placeholder="https://gestapp-api.XXXX.workers.dev/health" readonly/>
+        <button class="btn btn-primary" onclick="testWorker()">
+          <i class="fas fa-play"></i> Tester
+        </button>
+      </div>
+      <div class="result-box" id="test-worker-result" style="display:none"></div>
+
+      <div class="cmd-label" style="margin-top:20px">🔐 Test 2 : Connexion SuperAdmin</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+        <input class="cf-input" id="test-email" type="email" placeholder="Email superadmin"/>
+        <input class="cf-input" id="test-password" type="password" placeholder="Mot de passe"/>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px" onclick="testLogin()">
+        <i class="fas fa-sign-in-alt"></i> Tester la connexion
+      </button>
+      <div class="result-box" id="test-login-result" style="display:none"></div>
+
+      <div class="cmd-label" style="margin-top:20px">🌐 Test 3 : Ouvrir les applications</div>
+      <div id="app-links" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <a class="btn btn-outline" id="link-admin" href="#" target="_blank" onclick="openLink(event,'admin')">
+          <i class="fas fa-crown"></i> Portail Admin
+        </a>
+        <a class="btn btn-outline" id="link-gestapp" href="#" target="_blank" onclick="openLink(event,'gestapp')">
+          <i class="fas fa-hard-hat"></i> GestApp BTP
+        </a>
+      </div>
+
+      <div class="input-group" style="margin-top:20px">
+        <button class="btn btn-success" onclick="confirmStep7()" style="width:100%;justify-content:center">
+          <i class="fas fa-rocket"></i> 🎉 Déploiement terminé — Tout fonctionne !
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETE BANNER -->
+  <div class="complete-banner" id="complete-banner">
+    <div style="font-size:48px;margin-bottom:16px">🎉</div>
+    <h2>Déploiement réussi !</h2>
+    <p style="margin-top:8px">GestionApp v5.0 est maintenant en ligne sur Cloudflare.<br>Architecture : GitHub + Cloudflare Workers + D1 (SQLite)</p>
+    <div class="complete-links" id="final-links">
+      <a class="complete-link primary-link" href="#" id="final-admin" target="_blank">
+        <i class="fas fa-crown"></i> Portail Super Admin
+      </a>
+      <a class="complete-link" href="#" id="final-gestapp" target="_blank">
+        <i class="fas fa-hard-hat"></i> GestApp BTP
+      </a>
+      <a class="complete-link" href="https://dash.cloudflare.com" target="_blank">
+        <i class="fas fa-cloud"></i> Dashboard Cloudflare
+      </a>
+    </div>
+    <div style="margin-top:24px;padding:16px;background:var(--bg3);border-radius:8px;text-align:left;font-size:13px;color:var(--text2)">
+      <strong style="color:var(--warning)">⚠️ Rappels importants :</strong><br>
+      • Changez le mot de passe SuperAdmin après la première connexion<br>
+      • Sauvegardez le JWT_SECRET dans un endroit sécurisé (ex: gestionnaire de mots de passe)<br>
+      • Pour mettre à jour : <code style="font-family:monospace;color:#f0883e">git push</code> suffit (Pages se redéploie automatiquement)
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+const state = {
+  workerUrl: '',
+  d1Id:      '',
+  saEmail:   '',
+  saPassword:'',
+  saName:    '',
+  jwtSecret: '',
+  pagesUrl:  '',
+  stepsCompleted: new Set(),
+};
+
+const TOTAL_STEPS = 7;
+
+// ══════════════════════════════════════════════════════
+//  PROGRESS
+// ══════════════════════════════════════════════════════
+function updateProgress() {
+  const done  = state.stepsCompleted.size;
+  const pct   = Math.round((done / TOTAL_STEPS) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    const ps = document.getElementById('ps-' + i);
+    if (!ps) continue;
+    ps.className = 'progress-step';
+    if (state.stepsCompleted.has(i)) ps.classList.add('done');
+    else if (i === done + 1)         ps.classList.add('active');
+    const dot = ps.querySelector('.step-dot');
+    if (state.stepsCompleted.has(i)) dot.innerHTML = '<i class="fas fa-check" style="font-size:10px"></i>';
+    else dot.textContent = i;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  STEP CONTROLS
+// ══════════════════════════════════════════════════════
+function toggleStep(n) {
+  const card = document.getElementById('step-' + n);
+  if (card.classList.contains('locked')) return;
+  card.classList.toggle('open');
+}
+
+function jumpTo(n) {
+  const card = document.getElementById('step-' + n);
+  if (card.classList.contains('locked')) return;
+  // Fermer tous
+  for (let i = 1; i <= TOTAL_STEPS; i++) {
+    document.getElementById('step-' + i)?.classList.remove('open');
+  }
+  card.classList.add('open');
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function unlockStep(n) {
+  const card = document.getElementById('step-' + n);
+  if (!card) return;
+  card.classList.remove('locked');
+  card.classList.add('active');
+}
+
+function markDone(n) {
+  const card  = document.getElementById('step-' + n);
+  const badge = document.getElementById('badge-' + n);
+  card.classList.remove('active', 'open');
+  card.classList.add('done');
+  badge.className = 'step-status-badge badge-done';
+  badge.textContent = '✅ Terminé';
+  state.stepsCompleted.add(n);
+  updateProgress();
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 1
+// ══════════════════════════════════════════════════════
+function validateWorkerUrl(input) {
+  const val = input.value.trim();
+  const ok  = val.startsWith('https://') && val.includes('.workers.dev');
+  input.classList.toggle('valid',   ok);
+  input.classList.toggle('invalid', val.length > 5 && !ok);
+  const hint = document.getElementById('worker-url-hint');
+  hint.style.color = ok ? 'var(--success)' : '';
+  hint.textContent  = ok
+    ? '✅ URL valide !'
+    : 'Format attendu : https://gestapp-api.[sous-domaine].workers.dev';
+}
+
+function confirmStep1() {
+  const url = document.getElementById('worker-url').value.trim();
+  if (!url.startsWith('https://') || !url.includes('.workers.dev')) {
+    alert('⚠️ Collez d\'abord l\'URL du Worker (format: https://xxx.workers.dev)');
+    return;
+  }
+  state.workerUrl = url.replace(/\/$/, '');
+
+  // Propager dans les autres étapes
+  document.getElementById('worker-url-step5').value = state.workerUrl;
+  document.getElementById('test-worker-url').value  = state.workerUrl + '/health';
+  document.getElementById('new-url-1').textContent  = state.workerUrl;
+  document.getElementById('new-url-2').textContent  = state.workerUrl;
+  document.getElementById('sed-url').textContent    = state.workerUrl.replace('https://','');
+  document.getElementById('sed-url-win').textContent= state.workerUrl.replace('https://','');
+
+  markDone(1);
+  unlockStep(2);
+  setTimeout(() => jumpTo(2), 400);
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 2
+// ══════════════════════════════════════════════════════
+function validateUUID(input, id) {
+  const val = input.value.trim();
+  const ok  = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+  input.classList.toggle('valid',   ok);
+  input.classList.toggle('invalid', val.length > 5 && !ok);
+}
+
+function autoUpdateWrangler() {
+  const id = document.getElementById('d1-id').value.trim();
+  if (!id) { alert('Collez d\'abord le database_id'); return; }
+  state.d1Id = id;
+  alert(`✅ À copier dans workers/gestapp-api/wrangler.toml :\n\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "gestapp-db"\ndatabase_id = "${id}"`);
+}
+
+function confirmStep2() {
+  const id = document.getElementById('d1-id').value.trim();
+  state.d1Id = id;
+  markDone(2);
+  unlockStep(3);
+  setTimeout(() => jumpTo(3), 400);
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 3 — Génération SQL SuperAdmin
+// ══════════════════════════════════════════════════════
+function generateSeed() {
+  const pw = document.getElementById('sa-password').value;
+  document.getElementById('seed-pw-preview').textContent = pw || 'VotreMDP2025!';
+  const email = document.getElementById('sa-email').value;
+  document.getElementById('sa-email-preview').textContent = email || 'said.hamdaoui1984@gmail.com';
+}
+
+function genPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!$%';
+  let pw = '';
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  arr.forEach(b => { pw += chars[b % chars.length]; });
+  document.getElementById('sa-password').value = pw;
+  generateSeed();
+}
+
+async function generateSQL() {
+  const email    = document.getElementById('sa-email').value.trim();
+  const password = document.getElementById('sa-password').value;
+  const name     = document.getElementById('sa-name').value.trim();
+  const btn      = document.getElementById('btn-gen-sql');
+
+  if (!email || !password || !name) {
+    alert('Remplissez l\'email, le mot de passe et le nom complet.');
+    return;
+  }
+  if (password.length < 8) {
+    alert('Le mot de passe doit contenir au moins 8 caractères.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération PBKDF2...';
+
+  try {
+    const hash = await hashPassword(password);
+    const now  = new Date().toISOString();
+    const id   = 'superadmin-001';
+
+    const sql = `INSERT OR REPLACE INTO platform_users
+  (id, email, password_hash, full_name, role, is_active, can_create_users, app_access, module_permissions, twofa_enabled, created_at, updated_at)
+VALUES
+  ('${id}', '${email}', '${hash}', '${name}', 'superadmin', 1, 1, '[]', '{}', 0, '${now}', '${now}');`;
+
+    document.getElementById('sql-text').textContent = sql;
+    document.getElementById('sql-result').classList.add('visible');
+    state.saEmail    = email;
+    state.saPassword = password;
+    state.saName     = name;
+    document.getElementById('sa-email-preview').textContent = email;
+
+  } catch(e) {
+    alert('Erreur lors de la génération : ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-magic"></i> Générer le SQL SuperAdmin';
+}
+
+// PBKDF2 identique au Worker (Web Crypto API)
+async function hashPassword(password) {
+  const salt   = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const keyMat = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits   = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100000 },
+    keyMat, 256
+  );
+  const hashHex = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+}
+
+function copySql() {
+  const text = document.getElementById('sql-text').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('✅ SQL copié !'));
+}
+
+function openD1Console() {
+  window.open('https://dash.cloudflare.com/?to=/:account/workers/d1', '_blank');
+}
+
+function confirmStep3() {
+  state.saEmail    = document.getElementById('sa-email').value.trim();
+  state.saPassword = document.getElementById('sa-password').value;
+  state.saName     = document.getElementById('sa-name').value.trim();
+  document.getElementById('test-email').value    = state.saEmail;
+  document.getElementById('test-password').value = state.saPassword;
+  markDone(3);
+  unlockStep(4);
+  setTimeout(() => jumpTo(4), 400);
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 4
+// ══════════════════════════════════════════════════════
+function generateJWTSecret() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  const secret = Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+  document.getElementById('jwt-secret-val').value = secret;
+  state.jwtSecret = secret;
+}
+
+function copyJwtSecret() {
+  const v = document.getElementById('jwt-secret-val').value;
+  if (!v) { alert('Générez d\'abord un secret.'); return; }
+  navigator.clipboard.writeText(v).then(() => showToast('✅ JWT_SECRET copié !'));
+}
+
+function confirmStep4() {
+  const v = document.getElementById('jwt-secret-val').value;
+  if (!v) { alert('Générez et configurez d\'abord le JWT_SECRET.'); return; }
+  markDone(4);
+  unlockStep(5);
+  setTimeout(() => jumpTo(5), 400);
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 5
+// ══════════════════════════════════════════════════════
+function updatePagesUrl(input) {
+  state.pagesUrl = input.value.trim();
+}
+
+function confirmStep5() {
+  if (!state.workerUrl) { alert('Assurez-vous d\'avoir complété l\'Étape 1.'); return; }
+  markDone(5);
+  unlockStep(6);
+  setTimeout(() => jumpTo(6), 400);
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 6
+// ══════════════════════════════════════════════════════
+function confirmStep6() {
+  const pagesUrl = document.getElementById('pages-url').value.trim() || state.pagesUrl;
+  const base = pagesUrl || 'https://gestapp.digital-pro.live';
+
+  document.getElementById('link-admin').href   = base + '/admin/';
+  document.getElementById('link-gestapp').href = base + '/gestapp212/';
+  document.getElementById('final-admin').href   = base + '/admin/';
+  document.getElementById('final-gestapp').href = base + '/gestapp212/';
+
+  markDone(6);
+  unlockStep(7);
+  setTimeout(() => jumpTo(7), 400);
+}
+
+function openLink(e, type) {
+  const el = e.currentTarget;
+  if (el.href === '#' || el.href === window.location.href + '#') {
+    e.preventDefault();
+    alert('Complétez d\'abord l\'Étape 6 pour obtenir l\'URL.');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  ÉTAPE 7 — TESTS
+// ══════════════════════════════════════════════════════
+async function testWorker() {
+  const url = document.getElementById('test-worker-url').value.trim();
+  if (!url) { alert('Renseignez l\'URL du Worker'); return; }
+  const res = document.getElementById('test-worker-result');
+  res.style.display = 'block';
+  res.className = 'result-box';
+  res.textContent = '⏳ Test en cours...';
+  try {
+    const resp  = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data  = await resp.json();
+    if (data.ok) {
+      res.classList.add('visible');
+      res.textContent = `✅ Worker opérationnel !\n${JSON.stringify(data, null, 2)}`;
+    } else {
+      res.textContent = `⚠️ Réponse inattendue :\n${JSON.stringify(data, null, 2)}`;
+    }
+  } catch(e) {
+    res.textContent = `❌ Erreur : ${e.message}\n\nVérifiez :\n• L'URL du Worker\n• Le déploiement (wrangler deploy)\n• La connexion internet`;
+  }
+}
+
+async function testLogin() {
+  const url      = (state.workerUrl || document.getElementById('test-worker-url').value.replace('/health','')) + '/auth/login';
+  const email    = document.getElementById('test-email').value.trim();
+  const password = document.getElementById('test-password').value;
+  const res      = document.getElementById('test-login-result');
+
+  if (!email || !password) { alert('Entrez l\'email et le mot de passe.'); return; }
+  res.style.display = 'block';
+  res.className = 'result-box';
+  res.textContent = '⏳ Connexion en cours...';
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(10000)
+    });
+    const data = await resp.json();
+    if (resp.ok && data.token) {
+      res.classList.add('visible');
+      res.textContent = `✅ Connexion réussie !\nUtilisateur : ${data.user?.name || data.user?.email}\nRôle : ${data.user?.role}\nToken : ${data.token.substring(0, 40)}...`;
+    } else {
+      res.textContent = `❌ Erreur de connexion (${resp.status}) :\n${data.error || JSON.stringify(data)}`;
+    }
+  } catch(e) {
+    res.textContent = `❌ Erreur : ${e.message}`;
+  }
+}
+
+function confirmStep7() {
+  markDone(7);
+  document.getElementById('complete-banner').classList.add('visible');
+  document.getElementById('complete-banner').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ══════════════════════════════════════════════════════
+//  UTILITAIRES
+// ══════════════════════════════════════════════════════
+function copyCmd(btn) {
+  const block = btn.closest('.cmd-block');
+  const text  = block.textContent.replace('Copier','').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="fas fa-check"></i> Copié !';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="fas fa-copy"></i> Copier';
+    }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ Copié !');
+  });
+}
+
+let _toast = null;
+function showToast(msg) {
+  if (_toast) _toast.remove();
+  _toast = document.createElement('div');
+  _toast.style.cssText = `
+    position:fixed;bottom:24px;right:24px;
+    background:#1a2332;border:1px solid var(--success);
+    color:var(--success);padding:10px 18px;
+    border-radius:8px;font-size:13px;font-weight:600;
+    z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);
+    animation:fadeIn .2s ease;
+  `;
+  _toast.textContent = msg;
+  document.body.appendChild(_toast);
+  setTimeout(() => _toast?.remove(), 3000);
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  updateProgress();
+  // Pré-remplir email depuis Étape 3
+  document.getElementById('sa-email').addEventListener('input', () => {
+    document.getElementById('sa-email-preview').textContent =
+      document.getElementById('sa-email').value || 'said.hamdaoui1984@gmail.com';
+  });
+});
+</script>
+</body>
+</html>

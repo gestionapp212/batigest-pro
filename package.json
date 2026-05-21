@@ -1,0 +1,12 @@
+{
+  "name": "digital-pro",
+  "version": "3.1.0",
+  "description": "Digital-Pro — Plateforme multi-apps : GestApp BTP, Family CashFlow, CalcPeinture Pro",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Site statique — aucun build requis'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

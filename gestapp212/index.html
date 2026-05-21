@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html id="html-root" lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="GestionApp 212 — Logiciel de gestion BTP Maroc"/>
+  <title>GestionApp 212 — BTP Maroc</title>
+  <!-- Favicon SVG inline -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231a2332'/><text x='50%' y='56%' dominant-baseline='middle' text-anchor='middle' font-size='16' font-weight='bold' fill='%2363b3ed' font-family='Arial'>G</text></svg>"/>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"/>
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LOADER PLEIN ÉCRAN
+══════════════════════════════════════════════ -->
+<div id="fullscreen-loader">
+  <div class="spinner"></div>
+  <div id="loader-text" style="color:rgba(255,255,255,.8);font-size:14px;font-weight:500;letter-spacing:.3px">Connexion à GestionApp…</div>
+  <div style="color:rgba(255,255,255,.35);font-size:11px;margin-top:-4px">BTP Maroc · v3.9</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PAGE LOGIN
+══════════════════════════════════════════════ -->
+<div id="login-page" style="display:none;min-height:100vh;background:linear-gradient(135deg,#0f1923 0%,#1a2d44 50%,#1e3a5a 100%);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;padding:38px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+
+    <!-- Logo + titre -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="width:60px;height:60px;background:linear-gradient(135deg,#1a2332,#2d4a6e);border-radius:13px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">
+        <i class="fas fa-hard-hat" style="color:#63b3ed;font-size:26px"></i>
+      </div>
+      <h1 id="auth-title" style="margin:0;font-size:20px;font-weight:700;color:#1a202c">GestionApp 212</h1>
+      <p style="margin:4px 0 0;color:#718096;font-size:12px">Logiciel de gestion BTP · Maroc 🇲🇦</p>
+    </div>
+
+    <!-- Form login -->
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px">Email</label>
+        <input id="login-email" type="email" autocomplete="username" placeholder="votre@email.com" required
+          style="width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;outline:none;transition:border .18s;box-sizing:border-box"
+          onfocus="this.style.borderColor='#3182ce';this.style.boxShadow='0 0 0 3px rgba(49,130,206,.12)'"
+          onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"/>
+      </div>
+      <div style="margin-bottom:14px;position:relative">
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px">Mot de passe</label>
+        <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" required
+          style="width:100%;padding:10px 38px 10px 13px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:13px;outline:none;transition:border .18s;box-sizing:border-box"
+          onfocus="this.style.borderColor='#3182ce';this.style.boxShadow='0 0 0 3px rgba(49,130,206,.12)'"
+          onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"/>
+        <i class="fas fa-eye" id="toggle-pw-icon" onclick="togglePw()"
+          style="position:absolute;right:12px;bottom:11px;cursor:pointer;color:#a0aec0;font-size:14px"></i>
+      </div>
+
+      <!-- Erreur -->
+      <div id="login-error" style="display:none;background:#fff5f5;color:#9b2c2c;padding:9px 12px;border-radius:7px;font-size:12px;margin-bottom:12px;border-left:3px solid #e53e3e">
+        <i class="fas fa-exclamation-circle"></i> <span id="login-error-msg">Erreur</span>
+        <!-- Guide affiché seulement si erreur 422 / compte inexistant -->
+        <div id="login-guide-422" style="display:none;margin-top:8px;padding:8px;background:#fffbeb;border-radius:5px;border:1px solid #f6e05e;color:#744210;font-size:10.5px;line-height:1.6">
+          <strong>📋 Compte introuvable :</strong><br>
+          Contactez votre administrateur pour créer votre compte sur le portail Admin.<br>
+          <em style="color:#a0522d">En attendant, utilisez le Mode Démo ci-dessous.</em>
+        </div>
+      </div>
+
+      <button type="submit" id="login-submit-btn"
+        style="width:100%;padding:11px;background:linear-gradient(135deg,#2b6cb0,#1a365d);color:#fff;border:none;border-radius:7px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .18s">
+        <i class="fas fa-sign-in-alt"></i> Se connecter
+      </button>
+    </form>
+
+    <!-- 2FA -->
+    <div id="twofa-step" style="display:none">
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:14px;margin-bottom:14px;text-align:center">
+        <p style="margin:0 0 6px;font-size:11px;color:#4a5568">Code de vérification 2FA</p>
+        <p id="twofa-code-display" style="font-size:30px;font-weight:700;color:#2b6cb0;letter-spacing:10px;margin:0"></p>
+      </div>
+      <input id="twofa-input" type="text" maxlength="6" placeholder="Code 6 chiffres"
+        style="width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:20px;text-align:center;letter-spacing:8px;margin-bottom:10px;box-sizing:border-box"/>
+      <div style="display:flex;gap:8px">
+        <button onclick="verify2FA()" style="flex:1;padding:10px;background:#2b6cb0;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer">
+          <i class="fas fa-check"></i> Vérifier
+        </button>
+        <button onclick="cancelLogin()" style="flex:1;padding:10px;background:#e2e8f0;color:#4a5568;border:none;border-radius:7px;font-weight:600;cursor:pointer">
+          Annuler
+        </button>
+      </div>
+    </div>
+
+    <!-- Statut Supabase sur la page de connexion -->
+    <div id="login-supabase-status" style="display:none;margin-top:14px;padding:8px 12px;border-radius:7px;font-size:11px;text-align:center"></div>
+
+    <!-- Boutons démo -->
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0">
+      <p style="text-align:center;font-size:11px;color:#a0aec0;margin:0 0 9px">Accès rapide — Mode démonstration</p>
+      <div style="display:flex;gap:7px;margin-bottom:7px">
+        <button onclick="quickLogin('demo-admin@gestionapp.ma','Demo2026!')"
+          style="flex:1;padding:8px;background:#f7fafc;color:#2d3748;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer"
+          onmouseover="this.style.background='#edf2f7'" onmouseout="this.style.background='#f7fafc'">
+          <i class="fas fa-user-shield"></i> Admin démo
+        </button>
+        <button onclick="quickLogin('demo.commercial@gestionapp.ma','Demo2026!')"
+          style="flex:1;padding:8px;background:#f7fafc;color:#2d3748;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer"
+          onmouseover="this.style.background='#edf2f7'" onmouseout="this.style.background='#f7fafc'">
+          <i class="fas fa-briefcase"></i> Commercial démo
+        </button>
+      </div>
+      <!-- Super Admin: bouton masqué (display:none) -->
+      <button id="btn-sa-hidden" onclick="quickLogin('said.hamdaoui1984@gmail.com','SAID1984@')"
+        style="display:none;width:100%;padding:9px;background:linear-gradient(135deg,#744210,#92400e);color:#fef3c7;border:1px solid #92400e;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .18s"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <i class="fas fa-crown" style="color:#fbbf24"></i> 👑 Super Admin
+      </button>
+      <p style="text-align:center;font-size:10px;color:#cbd5e0;margin:7px 0 0">💾 Données sauvegardées localement en mode démo</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPLICATION PRINCIPALE
+══════════════════════════════════════════════ -->
+<div id="app" style="display:none;height:100vh;overflow:hidden">
+
+  <!-- ═══════ SIDEBAR ═══════ -->
+  <aside id="sidebar">
+
+    <!-- Header sidebar -->
+    <div class="sidebar-header">
+      <div class="sidebar-brand" onclick="navigate('dashboard')" title="Tableau de bord">
+        <div class="brand-icon">
+          <img id="sidebar-logo-img" src="" alt="" style="display:none;width:24px;height:24px;border-radius:4px;object-fit:cover"/>
+          <i id="sidebar-logo-icon" class="fas fa-hard-hat"></i>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">GestionApp</div>
+          <div class="brand-version">BTP Multi-Société · MA</div>
+        </div>
+      </div>
+      <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Réduire">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+
+    <!-- Sélecteur société (superadmin) -->
+    <div id="company-selector" style="display:none;padding:8px 12px">
+      <select onchange="switchCompany(this.value)"
+        style="width:100%;padding:7px 9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:#fff;font-size:11px;outline:none;cursor:pointer">
+      </select>
+    </div>
+
+    <!-- Bloc société / utilisateur affiché pour tous -->
+    <div id="company-selector-display" style="padding:8px 12px 4px">
+      <div class="company-select-btn" onclick="navigate('parametres')">
+        <div class="company-icon" id="company-abbr">G</div>
+        <div class="company-info">
+          <div class="company-name" id="sidebar-company-name">GestionApp</div>
+          <div class="company-role" id="sidebar-user-role">Chargement…</div>
+        </div>
+        <i class="fas fa-chevron-right company-chevron"></i>
+      </div>
+    </div>
+
+    <!-- Favoris -->
+    <div id="favorites-bar" style="display:none;padding:4px 12px 2px">
+      <div class="fav-bar-title">⭐ Favoris</div>
+      <div id="favorites-list"></div>
+    </div>
+
+    <!-- NAVIGATION -->
+    <nav class="sidebar-nav">
+
+      <!-- PRINCIPAL -->
+      <div class="nav-section-title">Principal</div>
+
+      <a class="nav-item" data-module="dashboard" onclick="navigate('dashboard')">
+        <i class="fas fa-tachometer-alt"></i>
+        <span class="nav-label">Tableau de bord</span>
+      </a>
+      <a class="nav-item" data-module="agenda" onclick="navigate('agenda')">
+        <i class="fas fa-calendar-alt"></i>
+        <span class="nav-label">Agenda</span>
+      </a>
+      <a class="nav-item" data-module="taches" onclick="navigate('taches')">
+        <i class="fas fa-tasks"></i>
+        <span class="nav-label">Tâches</span>
+      </a>
+
+      <!-- COMMERCIAL -->
+      <div class="nav-section-title">Commercial</div>
+
+      <a class="nav-item" data-module="pipeline" onclick="navigate('pipeline')">
+        <i class="fas fa-filter"></i>
+        <span class="nav-label">Pipeline</span>
+      </a>
+      <a class="nav-item" data-module="clients" onclick="navigate('clients')">
+        <i class="fas fa-users"></i>
+        <span class="nav-label">Clients</span>
+      </a>
+      <a class="nav-item" data-module="devis" onclick="navigate('devis')">
+        <i class="fas fa-file-alt"></i>
+        <span class="nav-label">Devis</span>
+      </a>
+      <a class="nav-item" data-module="factures" onclick="navigate('factures')">
+        <i class="fas fa-file-invoice-dollar"></i>
+        <span class="nav-label">Facturation</span>
+      </a>
+
+      <!-- CHANTIERS -->
+      <div class="nav-section-title">Chantiers</div>
+
+      <a class="nav-item" data-module="chantiers" onclick="navigate('chantiers')">
+        <i class="fas fa-hard-hat"></i>
+        <span class="nav-label">Chantiers</span>
+      </a>
+      <a class="nav-item" data-module="galerie" onclick="navigate('galerie')">
+        <i class="fas fa-images"></i>
+        <span class="nav-label">Galerie</span>
+      </a>
+      <a class="nav-item" data-module="stock" onclick="navigate('stock')">
+        <i class="fas fa-boxes"></i>
+        <span class="nav-label">Stock</span>
+      </a>
+      <a class="nav-item" data-module="fournisseurs" onclick="navigate('fournisseurs')">
+        <i class="fas fa-truck"></i>
+        <span class="nav-label">Fournisseurs</span>
+      </a>
+      <a class="nav-item" data-module="garanties" onclick="navigate('garanties')">
+        <i class="fas fa-shield-alt"></i>
+        <span class="nav-label">Garanties & SAV</span>
+      </a>
+
+      <!-- GESTION -->
+      <div class="nav-section-title">Gestion</div>
+
+      <a class="nav-item" data-module="paiements" onclick="navigate('paiements')">
+        <i class="fas fa-credit-card"></i>
+        <span class="nav-label">Paiements</span>
+      </a>
+      <a class="nav-item" data-module="analyse" onclick="navigate('analyse')">
+        <i class="fas fa-chart-bar"></i>
+        <span class="nav-label">Rapports</span>
+      </a>
+
+      <!-- ADMINISTRATION (visible pour admin/superadmin) -->
+      <div class="nav-section-title" id="nav-admin-section" style="display:none">Administration</div>
+
+      <a class="nav-item" id="parametres-link" data-module="parametres" onclick="navigate('parametres')" style="display:none">
+        <i class="fas fa-cog"></i>
+        <span class="nav-label">Paramètres</span>
+      </a>
+
+      <a class="nav-item nav-sa" id="superadmin-link" data-module="superadmin" onclick="navigate('superadmin')" style="display:none">
+        <i class="fas fa-crown"></i>
+        <span class="nav-label">Super Admin <span class="badge-sa">SA</span></span>
+      </a>
+
+    </nav>
+
+    <!-- Footer utilisateur -->
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div id="sidebar-avatar" class="user-avatar">U</div>
+        <div class="user-info">
+          <div id="sidebar-username" class="user-name">Utilisateur</div>
+          <div id="sidebar-email" class="user-email">email@exemple.ma</div>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Déconnexion">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════ MAIN ═══════ -->
+  <div id="main-wrapper">
+
+    <!-- TOPBAR -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" onclick="toggleSidebar()" title="Menu">
+          <i class="fas fa-bars"></i>
+        </button>
+        <nav id="breadcrumb" class="breadcrumb-nav">
+          <i class="fas fa-tachometer-alt"></i> Tableau de bord
+          <span style="color:#a0aec0;margin:0 4px">/</span>
+          <span style="font-size:12px;color:#a0aec0">Vue générale de votre activité</span>
+        </nav>
+      </div>
+      <div class="topbar-right">
+        <!-- Langue -->
+        <button id="lang-btn" class="topbar-btn" onclick="toggleLang()" title="Langue">
+          <span style="font-size:12px;font-weight:700">FR</span>
+        </button>
+        <!-- Dark mode -->
+        <button id="darkmode-btn" class="topbar-btn" onclick="toggleDarkMode()" title="Mode sombre">
+          <i class="fas fa-moon"></i>
+        </button>
+        <!-- Notifications -->
+        <div class="notif-wrapper">
+          <button class="topbar-btn" onclick="toggleNotifications()" style="position:relative">
+            <i class="fas fa-bell"></i>
+            <span id="notif-badge" class="notif-badge" style="display:none">0</span>
+          </button>
+          <div id="notif-panel" class="notif-panel" style="display:none">
+            <div class="notif-header">
+              <span><i class="fas fa-bell" style="color:#3182ce"></i> Notifications</span>
+              <button onclick="markAllRead()" style="font-size:11px;color:#3182ce;background:none;border:none;cursor:pointer">Tout lire</button>
+            </div>
+            <div id="notif-list" class="notif-list">
+              <div style="padding:20px;text-align:center;font-size:12px;color:#a0aec0">Aucune notification</div>
+            </div>
+          </div>
+        </div>
+        <!-- Indicateur connexion Supabase (cliquable pour recharger) -->
+        <div id="supabase-status" title="Cliquer pour recharger les données" onclick="reloadSupabaseData()"
+          style="display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,0.07);cursor:pointer;transition:background .2s"
+          onmouseover="this.style.background='rgba(255,255,255,0.14)'" onmouseout="this.style.background='rgba(255,255,255,0.07)'">
+          <span id="supabase-dot" style="width:7px;height:7px;border-radius:50%;background:#a0aec0;display:inline-block"></span>
+          <span id="supabase-label" style="color:#a0aec0">…</span>
+        </div>
+        <!-- Badge société + user -->
+        <div class="topbar-company" onclick="navigate('parametres')">
+          <span class="dot"></span>
+          <span id="topbar-company-name">GestionApp</span>
+          <i class="fas fa-chevron-down" style="font-size:9px;color:#a0aec0"></i>
+        </div>
+        <div class="topbar-user" onclick="navigate('parametres')">
+          <div id="topbar-avatar" class="topbar-avatar">U</div>
+          <span id="topbar-username" class="topbar-username">Nom</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENU -->
+    <main id="page-content">
+      <div class="loading-screen"><div class="spinner"></div></div>
+    </main>
+
+  </div><!-- /#main-wrapper -->
+</div><!-- /#app -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Modal dynamique -->
+<div id="dynamic-modal"></div>
+
+<!-- ══════════════════════════════════════════════
+     SCRIPTS — ordre précis
+══════════════════════════════════════════════ -->
+
+<!-- 1. SDK Supabase -->
+<script src="js/vendor/supabase.min.js?v=3.8"></script>
+<script src="js/vendor/chart.umd.min.js?v=3.8"></script>
+
+<!-- 2. Client Supabase/CF (Auth + getSupabase) -->
+<script src="js/cloudflare-client.js?v=5.2"></script>
+<!-- 2b. CRUD Supabase : sbInsert, sbUpdate, sbDelete, sbGetAll, sbGetById -->
+<script src="js/supabase-client.js?v=5.2"></script>
+
+<!-- 3. Utilitaires globaux : esc, escHtml, formatMAD, calcTTC, calcTVA -->
+<script src="js/utils.js?v=5.2"></script>
+
+<!-- 4. Core (State, Auth, Navigate, Dark Mode, Lang) -->
+<script src="js/core.js?v=5.0"></script>
+
+<!-- 5. Modules pages (ordre alphabétique) -->
+<script src="js/agenda.js?v=5.0"></script>
+<script src="js/analyse.js?v=5.0"></script>
+<script src="js/chantiers.js?v=5.0"></script>
+<script src="js/clients.js?v=5.0"></script>
+<script src="js/dashboard.js?v=5.0"></script>
+<script src="js/devis.js?v=5.0"></script>
+<script src="js/factures.js?v=5.0"></script>
+<script src="js/fournisseurs.js?v=5.0"></script>
+<script src="js/galerie.js?v=5.0"></script>
+<script src="js/garanties.js?v=5.0"></script>
+<script src="js/paiements.js?v=5.0"></script>
+<script src="js/parametres.js?v=5.0"></script>
+<script src="js/pipeline.js?v=5.0"></script>
+<script src="js/stock.js?v=5.0"></script>
+<script src="js/superadmin.js?v=5.0"></script>
+<script src="js/taches.js?v=5.0"></script>
+
+<!-- 6. Persistance localStorage (mode démo) -->
+<script src="js/persistence.js?v=5.0"></script>
+
+<!-- 7. Génération PDF (devis + factures) -->
+<script src="js/pdf.js"></script>
+
+<!-- 8. Données mock + boot -->
+<script src="js/app.js"></script>
+
+</body>
+</html>

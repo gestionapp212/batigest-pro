@@ -1,0 +1,128 @@
+# ============================================================
+#  DIGITAL-PRO — Configuration Netlify
+#  Site : https://helpful-rugelach-c0465d.netlify.app
+#
+#  Structure :
+#    /admin       → Portail Super Admin
+#    /gestapp212  → GestApp BTP (app principale)
+#    /famille     → Family CashFlow
+#    /calcul      → CalcPeinture Pro
+#
+#  Fonctions Netlify (Admin API) :
+#    /.netlify/functions/admin-create-user
+# ============================================================
+
+[build]
+  publish   = "."
+  functions = "gestapp212/netlify/functions"
+
+# ── REDIRECTIONS SPA ────────────────────────────────────────
+
+[[redirects]]
+  from = "/admin"
+  to   = "/admin/index.html"
+  status = 200
+
+# Fichiers statiques admin (test.html, etc.) — ne pas rediriger
+[[redirects]]
+  from = "/admin/*.html"
+  to   = "/admin/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to   = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/gestapp212"
+  to   = "/gestapp212/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/gestapp212/*"
+  to   = "/gestapp212/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/famille"
+  to   = "/famille/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/famille/*"
+  to   = "/famille/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/calcul"
+  to   = "/calcul/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/calcul/*"
+  to   = "/calcul/index.html"
+  status = 200
+
+# Ancienne URL → nouvelle (redirection permanente)
+[[redirects]]
+  from   = "/gestapp"
+  to     = "/gestapp212/index.html"
+  status = 301
+
+[[redirects]]
+  from   = "/gestapp/*"
+  to     = "/gestapp212/index.html"
+  status = 301
+
+# Page d'accueil → admin
+[[redirects]]
+  from   = "/"
+  to     = "/admin/index.html"
+  status = 200
+
+# Catch-all SPA (doit rester en dernier)
+[[redirects]]
+  from   = "/*"
+  to     = "/admin/index.html"
+  status = 200
+
+# ── EN-TÊTES ─────────────────────────────────────────────────
+
+# CORS pour les fonctions Netlify
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin  = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+
+# Sécurité globale
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options           = "SAMEORIGIN"
+    X-Content-Type-Options    = "nosniff"
+    Referrer-Policy           = "strict-origin-when-cross-origin"
+
+# Cache long pour les vendor JS (immuables)
+[[headers]]
+  for = "/gestapp212/js/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# No-cache pour les fichiers HTML et JS applicatifs
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/gestapp212/js/*.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/admin/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

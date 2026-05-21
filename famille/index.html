@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Cash Flow — Gestion financière familiale</title>
+  <meta name="description" content="Gérez les finances de votre famille simplement et efficacement">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+</head>
+<body>
+
+<!-- ── Loading Screen ── -->
+<div id="loading-screen" class="loading-overlay">
+  <div class="spinner"></div>
+  <p class="loading-text">Chargement...</p>
+</div>
+
+<!-- ── Toast Container ── -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ── App Root ── -->
+<div id="app"></div>
+
+<!-- ── Sidebar Overlay (mobile) ── -->
+<div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="closeSidebar()"></div>
+
+<!-- Scripts: Config & Supabase -->
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/db.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- App Scripts -->
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/layout.js"></script>
+
+<!-- Pages -->
+<script src="js/pages/landing.js"></script>
+<script src="js/pages/dashboard.js"></script>
+<script src="js/pages/income.js"></script>
+<script src="js/pages/expenses.js"></script>
+<script src="js/pages/subscriptions.js"></script>
+<script src="js/pages/loans.js"></script>
+<script src="js/pages/budgets.js"></script>
+<script src="js/pages/reports.js"></script>
+<script src="js/pages/family.js"></script>
+<script src="js/pages/settings.js"></script>
+<script src="js/pages/admin.js"></script>
+
+<!-- Router -->
+<script src="js/router.js"></script>
+
+</body>
+</html>

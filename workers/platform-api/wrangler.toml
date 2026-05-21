@@ -1,0 +1,22 @@
+# ═══════════════════════════════════════════════════════════════
+#  Cloudflare Worker — Platform API v5.0
+#  Commandes de déploiement :
+#    cd workers/platform-api
+#    wrangler deploy
+# ═══════════════════════════════════════════════════════════════
+
+name            = "platform-api"
+main            = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ── Secrets (wrangler secret put NOM) ──────────────────────────
+# SUPABASE_URL           = https://mfyhktnzjodaqfocupcn.supabase.co
+# SUPABASE_SERVICE_ROLE  = eyJ... (votre service_role key)
+# JWT_SECRET             = (clé aléatoire forte)
+# SUPERADMIN_EMAIL       = said.hamdaoui1984@gmail.com
+# ALLOWED_ORIGINS        = https://admin.VOTRE-DOMAINE.com,...
+
+# ── Variables non-secrètes ──────────────────────────────────────
+[vars]
+ENVIRONMENT = "production"

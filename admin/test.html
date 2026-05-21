@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔧 Test Admin — Digital-Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surf2: #273549;
+    --border: #334155; --text: #f1f5f9; --text2: #94a3b8;
+    --primary: #3b82f6; --success: #22c55e; --danger: #ef4444;
+    --warning: #f59e0b; --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px;
+           display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .badge-version { background: rgba(59,130,246,.2); color: var(--primary); padding: 2px 8px;
+                   border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  /* ── SECTION ── */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 20px; }
+  .section-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .section-header h2 { font-size: 14px; font-weight: 700; }
+  .section-body { padding: 18px; }
+
+  /* ── STEP ── */
+  .step-badge { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
+                justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .step-1 { background: rgba(59,130,246,.2); color: var(--primary); }
+  .step-2 { background: rgba(34,197,94,.2); color: var(--success); }
+  .step-3 { background: rgba(245,158,11,.2); color: var(--warning); }
+  .step-4 { background: rgba(239,68,68,.2); color: var(--danger); }
+
+  /* ── STATUS ── */
+  .status-box { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 12px;
+                display: flex; align-items: flex-start; gap: 10px; }
+  .status-ok      { background: rgba(34,197,94,.1);   border: 1px solid rgba(34,197,94,.3);   color: #86efac; }
+  .status-error   { background: rgba(239,68,68,.1);   border: 1px solid rgba(239,68,68,.3);   color: #fca5a5; }
+  .status-warning { background: rgba(245,158,11,.1);  border: 1px solid rgba(245,158,11,.3);  color: #fcd34d; }
+  .status-info    { background: rgba(59,130,246,.1);  border: 1px solid rgba(59,130,246,.3);  color: #93c5fd; }
+  .status-box .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .status-box .msg  { flex: 1; word-break: break-word; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width:600px) { .form-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+  .field input, .field select { padding: 9px 12px; background: var(--surf2); border: 1px solid var(--border);
+                                border-radius: 8px; color: var(--text); font-size: 13px; outline: none; transition: .15s; }
+  .field input:focus, .field select:focus { border-color: var(--primary); }
+  .pw-row { display: flex; gap: 6px; }
+  .pw-row input { flex: 1; }
+  .pw-gen { padding: 9px 12px; background: var(--surf2); border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text2); cursor: pointer; font-size: 12px; white-space: nowrap; }
+  .pw-gen:hover { color: var(--text); }
+  .apps-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .app-chip { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--surf2);
+              border: 1px solid var(--border); border-radius: 8px; cursor: pointer; user-select: none;
+              font-size: 12px; transition: .15s; }
+  .app-chip:hover { border-color: var(--primary); }
+  .app-chip input { accent-color: var(--primary); cursor: pointer; }
+  .app-chip.checked { border-color: var(--primary); background: rgba(59,130,246,.1); color: var(--primary); }
+
+  /* ── BUTTONS ── */
+  .btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+         border: none; display: inline-flex; align-items: center; gap: 6px; transition: .15s; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-success { background: rgba(34,197,94,.2); color: var(--success); border: 1px solid rgba(34,197,94,.3); }
+  .btn-success:hover { background: rgba(34,197,94,.3); }
+  .btn-warning { background: rgba(245,158,11,.2); color: var(--warning); border: 1px solid rgba(245,158,11,.3); }
+  .btn-warning:hover { background: rgba(245,158,11,.3); }
+  .btn-danger { background: rgba(239,68,68,.2); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
+  .btn-danger:hover { background: rgba(239,68,68,.3); }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btns-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* ── DRAG & DROP ZONE ── */
+  .dnd-board { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .dnd-col { flex-shrink: 0; width: 240px; background: var(--surf2); border: 1px solid var(--border);
+             border-radius: 10px; padding: 12px; min-height: 200px; transition: background .15s; }
+  .dnd-col.over { background: rgba(59,130,246,.1); border-color: var(--primary); }
+  .dnd-col-header { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+                    color: var(--text2); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+                    display: flex; align-items: center; justify-content: space-between; }
+  .dnd-col-header .count { background: var(--border); color: var(--text2); padding: 1px 7px;
+                            border-radius: 20px; font-size: 11px; }
+  .dnd-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+              margin-bottom: 8px; cursor: grab; transition: .15s; user-select: none; }
+  .dnd-card:active { cursor: grabbing; }
+  .dnd-card.dragging { opacity: .4; }
+  .dnd-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .dnd-card-name { font-size: 13px; font-weight: 600; }
+  .dnd-card-email { font-size: 11px; color: var(--text2); margin-top: 2px; overflow: hidden;
+                    text-overflow: ellipsis; white-space: nowrap; }
+  .dnd-card-role  { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px;
+                    font-size: 10px; font-weight: 700; margin-top: 6px; }
+  .role-admin     { background:#1e3a5f; color:#93c5fd; }
+  .role-manager   { background:#1a3a2a; color:#86efac; }
+  .role-commercial{ background:#2d1b00; color:#fcd34d; }
+  .role-technicien{ background:#1a1a3a; color:#a5b4fc; }
+  .role-superadmin{ background:#4c1d95; color:#c4b5fd; }
+  .dnd-card-apps { display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap; }
+  .dnd-card-app-badge { font-size: 9px; padding: 1px 5px; border-radius: 4px; background: var(--surf2); color: var(--text2); }
+  .dnd-empty { text-align: center; padding: 24px 12px; color: var(--text2); font-size: 12px; opacity: .5; }
+  .dnd-drop-hint { border: 2px dashed var(--border); border-radius: 8px; padding: 12px; text-align: center;
+                   color: var(--text2); font-size: 11px; opacity: .5; margin-bottom: 8px; }
+  .dnd-col.over .dnd-drop-hint { border-color: var(--primary); opacity: 1; color: var(--primary); }
+
+  /* ── LOG ── */
+  .log-box { background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+             font-family: monospace; font-size: 12px; max-height: 260px; overflow-y: auto; }
+  .log-line { margin-bottom: 4px; line-height: 1.5; word-break: break-word; }
+  .log-ok      { color: #86efac; }
+  .log-error   { color: #fca5a5; }
+  .log-warn    { color: #fcd34d; }
+  .log-info    { color: #93c5fd; }
+  .log-muted   { color: #475569; }
+
+  /* ── JSON ── */
+  .json-box { background: #0a0f1a; border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+              font-family: monospace; font-size: 11px; max-height: 320px; overflow-y: auto;
+              white-space: pre-wrap; word-break: break-word; color: #94a3b8; display: none; }
+
+  /* ── TOAST ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+           padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+           display: none; max-width: 340px; }
+  #toast.ok    { background: #166534; color: #bbf7d0; border: 1px solid #22c55e; display: block; }
+  #toast.err   { background: #7f1d1d; color: #fecaca; border: 1px solid #ef4444; display: block; }
+  #toast.info  { background: #1e3a5f; color: #bfdbfe; border: 1px solid #3b82f6; display: block; }
+
+  /* ── SPINNER ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin .8s linear infinite; display: inline-block; }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔧 Digital-Pro — Page de Test Rapide <span class="badge-version">Admin Tools</span></h1>
+  <a href="/admin/" style="font-size:12px;color:var(--text2);text-decoration:none">← Portail Admin</a>
+</header>
+
+<div class="container">
+
+  <!-- ══ ÉTAPE 1 : CONNEXION ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge step-1">1</div>
+      <h2>Connexion Superadmin</h2>
+      <span id="auth-status-badge" style="margin-left:auto;font-size:11px;color:var(--text2)">Non connecté</span>
+    </div>
+    <div class="section-body">
+      <div id="auth-status" class="status-box status-warning" style="display:none"></div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="login-email" value="said.hamdaoui1984@gmail.com" placeholder="superadmin@exemple.com">
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <input type="password" id="login-pw" placeholder="••••••••">
+        </div>
+      </div>
+      <div class="btns-row">
+        <button class="btn btn-primary" onclick="doLogin()" id="btn-login">🔐 Se connecter</button>
+        <button class="btn btn-danger btn-sm" onclick="doLogout()" id="btn-logout" style="display:none">Déconnexion</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ÉTAPE 2 : TEST FONCTION NETLIFY ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge step-2">2</div>
+      <h2>Test Fonction Netlify <code style="font-size:11px;color:var(--text2)">admin-create-user</code></h2>
+    </div>
+    <div class="section-body">
+      <p style="color:var(--text2);font-size:13px;margin-bottom:12px">
+        Teste la connexion à la fonction Netlify sans créer d'utilisateur. Vérifie que <code>SUPABASE_SERVICE_ROLE_KEY</code> est bien configurée.
+      </p>
+      <div id="netlify-result" style="display:none"></div>
+      <div class="btns-row">
+        <button class="btn btn-success" onclick="testNetlify()" id="btn-test-netlify">⚡ Tester la connexion</button>
+      </div>
+      <div id="netlify-json" class="json-box" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ══ ÉTAPE 3 : CRÉER UN UTILISATEUR ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge step-3">3</div>
+      <h2>Créer un utilisateur (test)</h2>
+    </div>
+    <div class="section-body">
+      <div id="create-result" style="display:none"></div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Prénom & Nom</label>
+          <input type="text" id="c-name" placeholder="Prénom Nom">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="c-email" placeholder="user@exemple.com">
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <div class="pw-row">
+            <input type="text" id="c-pw" placeholder="Min 8 caractères">
+            <button class="pw-gen" onclick="genPw()">🎲 Générer</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Rôle</label>
+          <select id="c-role">
+            <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
+            <option value="commercial">Commercial</option>
+            <option value="technicien">Technicien</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Applications accessibles</label>
+        <div class="apps-row">
+          <label class="app-chip checked" id="chip-gestapp">
+            <input type="checkbox" value="gestapp" checked onchange="toggleChip('chip-gestapp',this)"> 🏗️ GestApp BTP
+          </label>
+          <label class="app-chip" id="chip-famille">
+            <input type="checkbox" value="famille" onchange="toggleChip('chip-famille',this)"> 💰 Family CashFlow
+          </label>
+          <label class="app-chip" id="chip-calcul">
+            <input type="checkbox" value="calcul" onchange="toggleChip('chip-calcul',this)"> 🎨 CalcPeinture
+          </label>
+        </div>
+      </div>
+      <div class="btns-row">
+        <button class="btn btn-primary" onclick="createUser()" id="btn-create">➕ Créer l'utilisateur</button>
+      </div>
+      <div id="create-json" class="json-box" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ══ ÉTAPE 4 : TABLEAU DE BORD DRAG & DROP ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge step-4">4</div>
+      <h2>Utilisateurs — Tableau Drag & Drop</h2>
+      <button class="btn btn-sm btn-warning" onclick="loadUsers()" style="margin-left:auto">🔄 Actualiser</button>
+    </div>
+    <div class="section-body">
+      <!-- Status chargement utilisateurs -->
+      <div id="dnd-status" style="display:none" class="status-box"></div>
+
+      <!-- Alerte contrainte CHECK -->
+      <div id="alert-constraint" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px">
+        <strong style="color:#fca5a5">❌ Erreur de contrainte SQL détectée</strong><br><br>
+        La table <code style="color:#fcd34d">platform_users</code> en production possède une contrainte <code style="color:#fcd34d">CHECK</code> qui n'autorise que <code>superadmin</code> et <code>admin</code>.<br>
+        Il faut exécuter le script SQL de correction <strong>une seule fois</strong> dans Supabase.<br><br>
+        <a href="https://supabase.com/dashboard/project/mfyhktnzjodaqfocupcn/sql/new"
+           target="_blank"
+           style="display:inline-block;background:#ef4444;color:#fff;padding:8px 16px;border-radius:6px;font-weight:700;text-decoration:none;font-size:12px">
+          🔗 Ouvrir Supabase SQL Editor
+        </a>
+        <span style="color:var(--text2);font-size:12px;margin-left:10px">Coller le contenu de <code>sql/fix-role-constraint.sql</code> et cliquer Run</span>
+        <hr style="border-color:rgba(239,68,68,.3);margin:12px 0">
+        <details>
+          <summary style="cursor:pointer;color:#fca5a5;font-size:12px;font-weight:600">📋 Copier le SQL directement</summary>
+          <textarea id="sql-fix-text" readonly
+            style="width:100%;margin-top:8px;background:#0a0f1a;border:1px solid #334155;border-radius:6px;padding:10px;
+                   font-family:monospace;font-size:11px;color:#94a3b8;resize:vertical;min-height:120px"
+          ></textarea>
+          <button onclick="copySql()" class="btn btn-sm btn-danger" style="margin-top:6px">📋 Copier</button>
+        </details>
+      </div>
+
+      <p style="color:var(--text2);font-size:12px;margin-bottom:14px">
+        Glissez une carte d'une colonne à l'autre pour changer le rôle de l'utilisateur. 
+        <span style="color:var(--warning)">⚠️ Les changements sont sauvegardés en temps réel dans Supabase.</span>
+      </p>
+      <div id="dnd-board" class="dnd-board">
+        <div class="dnd-col" data-role="admin" id="col-admin" ondragover="onDragOver(event)" ondrop="onDrop(event,'admin')" ondragleave="onDragLeave(event)">
+          <div class="dnd-col-header">👑 Admin <span class="count" id="cnt-admin">0</span></div>
+          <div class="dnd-drop-hint">Déposer ici</div>
+          <div class="dnd-items" id="items-admin"></div>
+        </div>
+        <div class="dnd-col" data-role="manager" id="col-manager" ondragover="onDragOver(event)" ondrop="onDrop(event,'manager')" ondragleave="onDragLeave(event)">
+          <div class="dnd-col-header">🔷 Manager <span class="count" id="cnt-manager">0</span></div>
+          <div class="dnd-drop-hint">Déposer ici</div>
+          <div class="dnd-items" id="items-manager"></div>
+        </div>
+        <div class="dnd-col" data-role="commercial" id="col-commercial" ondragover="onDragOver(event)" ondrop="onDrop(event,'commercial')" ondragleave="onDragLeave(event)">
+          <div class="dnd-col-header">💼 Commercial <span class="count" id="cnt-commercial">0</span></div>
+          <div class="dnd-drop-hint">Déposer ici</div>
+          <div class="dnd-items" id="items-commercial"></div>
+        </div>
+        <div class="dnd-col" data-role="technicien" id="col-technicien" ondragover="onDragOver(event)" ondrop="onDrop(event,'technicien')" ondragleave="onDragLeave(event)">
+          <div class="dnd-col-header">🔧 Technicien <span class="count" id="cnt-technicien">0</span></div>
+          <div class="dnd-drop-hint">Déposer ici</div>
+          <div class="dnd-items" id="items-technicien"></div>
+        </div>
+        <div class="dnd-col" data-role="lecture" id="col-lecture" ondragover="onDragOver(event)" ondrop="onDrop(event,'lecture')" ondragleave="onDragLeave(event)">
+          <div class="dnd-col-header">👁️ Lecture <span class="count" id="cnt-lecture">0</span></div>
+          <div class="dnd-drop-hint">Déposer ici</div>
+          <div class="dnd-items" id="items-lecture"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOG EN TEMPS RÉEL ══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="step-badge step-1" style="background:rgba(148,163,184,.1);">📋</div>
+      <h2>Journal des actions</h2>
+      <button class="btn btn-sm btn-danger" onclick="clearLog()" style="margin-left:auto;padding:4px 10px;font-size:11px">Vider</button>
+    </div>
+    <div class="section-body" style="padding:0">
+      <div class="log-box" id="log-box">
+        <div class="log-line log-muted">— Prêt. Connectez-vous pour commencer. —</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .container -->
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════
+const SUPABASE_URL  = 'https://mfyhktnzjodaqfocupcn.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1meWhrdG56am9kYXFmb2N1cGNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mjg2ODEsImV4cCI6MjA5MTQwNDY4MX0.jnqEOFFu1gQvQrDemK4eOYwhWZI0K84Lgwhv7Cl2xGo';
+const NETLIFY_URL   = 'https://helpful-rugelach-c0465d.netlify.app';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { autoRefreshToken: true, persistSession: true, storageKey: 'dp_test_session' }
+});
+
+let session = null;
+let allUsers = [];
+let draggedUserId = null;
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('login-pw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data.session) {
+      session = data.session;
+      onLoggedIn();
+    }
+  } catch(e) { log('warn', 'Aucune session active.'); }
+});
+
+// ══════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-pw').value;
+  if (!email || !pw) { toast('Remplissez email et mot de passe.', 'err'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⏳</span> Connexion...';
+  log('info', `Connexion en cours : ${email}`);
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if (error) throw error;
+    session = data.session;
+    onLoggedIn();
+    log('ok', `✅ Connecté : ${email}`);
+  } catch(e) {
+    log('error', `❌ Erreur login : ${e.message}`);
+    showStatus('auth-status', 'error', '❌ ' + e.message);
+    toast('Connexion échouée : ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔐 Se connecter';
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  session = null;
+  allUsers = [];
+  document.getElementById('btn-logout').style.display = 'none';
+  document.getElementById('btn-login').style.display  = 'inline-flex';
+  document.getElementById('auth-status-badge').textContent = 'Non connecté';
+  document.getElementById('auth-status-badge').style.color = 'var(--text2)';
+  clearDndBoard();
+  hideStatus('auth-status');
+  log('info', 'Déconnecté.');
+  toast('Déconnecté.', 'info');
+}
+
+function onLoggedIn() {
+  const email = session.user?.email || '?';
+  document.getElementById('auth-status-badge').textContent = `✅ ${email}`;
+  document.getElementById('auth-status-badge').style.color = 'var(--success)';
+  document.getElementById('btn-login').style.display  = 'none';
+  document.getElementById('btn-logout').style.display = 'inline-flex';
+  showStatus('auth-status', 'ok', `✅ Connecté : ${email}`);
+  loadUsers();
+}
+
+// ══════════════════════════════════════════
+//  TEST NETLIFY
+// ══════════════════════════════════════════
+async function testNetlify() {
+  const btn = document.getElementById('btn-test-netlify');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⚡</span> Test...';
+  log('info', `Test fonction Netlify : ${NETLIFY_URL}/.netlify/functions/admin-create-user`);
+
+  const jsonBox = document.getElementById('netlify-json');
+  jsonBox.style.display = 'block';
+  jsonBox.textContent = 'En cours...';
+
+  try {
+    const res = await fetch(`${NETLIFY_URL}/.netlify/functions/admin-create-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _diag: true }),
+      signal: AbortSignal.timeout(12000),
+    });
+    const raw = await res.text();
+    let data = {};
+    try { data = JSON.parse(raw); } catch { data = { raw }; }
+
+    jsonBox.textContent = JSON.stringify(data, null, 2);
+
+    if (res.ok && data.ok) {
+      const hasService = data.env?.service;
+      if (hasService) {
+        showStatus('netlify-result', 'ok', '✅ Fonction opérationnelle — SERVICE_ROLE_KEY présente.');
+        log('ok', `✅ Netlify OK v${data.version}. SERVICE_ROLE_KEY: ✅`);
+        toast('✅ Netlify opérationnelle !', 'ok');
+      } else {
+        showStatus('netlify-result', 'error',
+          '⚠️ Netlify connectée MAIS SUPABASE_SERVICE_ROLE_KEY MANQUANTE !\n' +
+          'Ajoutez-la dans : Netlify → Site configuration → Environment variables.');
+        log('error', '❌ Netlify: SERVICE_ROLE_KEY MANQUANTE !');
+        toast('⚠️ SERVICE_ROLE_KEY manquante dans Netlify !', 'err');
+      }
+      // Détails env
+      const lines = [
+        `  version: ${data.version}`,
+        `  SUPABASE_URL (env): ${data.env?.url ? '✅' : '⚠️ manquant (fallback)'}`,
+        `  SUPABASE_ANON_KEY (env): ${data.env?.anon_env ? '✅' : '⚠️ manquant (fallback embarqué)'}`,
+        `  SUPABASE_SERVICE_ROLE_KEY: ${data.env?.service ? '✅ PRÉSENTE' : '❌ MANQUANTE'}`,
+      ];
+      lines.forEach(l => log('info', l));
+    } else {
+      showStatus('netlify-result', 'error', `❌ Erreur ${res.status} : ${data.error || raw.slice(0, 200)}`);
+      log('error', `❌ Netlify HTTP ${res.status}: ${data.error || '?'}`);
+      toast(`❌ Netlify erreur ${res.status}`, 'err');
+    }
+  } catch(e) {
+    const msg = e.name === 'AbortError' ? 'Timeout — Netlify ne répond pas.' : e.message;
+    showStatus('netlify-result', 'error', `❌ ${msg}`);
+    log('error', `❌ Netlify exception: ${msg}`);
+    toast('❌ ' + msg, 'err');
+    jsonBox.textContent = 'Erreur: ' + msg;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Tester la connexion';
+  }
+}
+
+// ══════════════════════════════════════════
+//  CRÉER UN UTILISATEUR
+// ══════════════════════════════════════════
+async function createUser() {
+  if (!session) { toast('Connectez-vous d\'abord (étape 1).', 'err'); return; }
+
+  const name  = document.getElementById('c-name').value.trim();
+  const email = document.getElementById('c-email').value.trim();
+  const pw    = document.getElementById('c-pw').value.trim();
+  const role  = document.getElementById('c-role').value;
+  const apps  = ['gestapp','famille','calcul'].filter(id => {
+    const chip = document.getElementById(`chip-${id}`);
+    return chip && chip.querySelector('input').checked;
+  });
+
+  if (!name)  { toast('Prénom & Nom requis.', 'err'); return; }
+  if (!email) { toast('Email requis.', 'err'); return; }
+  if (pw.length < 8) { toast('Mot de passe : 8 caractères minimum.', 'err'); return; }
+  if (!apps.length)  { toast('Sélectionnez au moins une application.', 'err'); return; }
+
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⏳</span> Création...';
+
+  const payload = { email, password: pw, full_name: name, role, app_access: apps, company_id: null };
+  log('info', `➕ Création : ${name} <${email}> rôle=${role} apps=${apps.join(',')}`);
+
+  const jsonBox = document.getElementById('create-json');
+  jsonBox.style.display = 'block';
+  jsonBox.textContent = 'Appel en cours → ' + NETLIFY_URL + '/.netlify/functions/admin-create-user\n\nPayload:\n' + JSON.stringify(payload, null, 2);
+
+  try {
+    const token = session.access_token;
+    const res = await fetch(`${NETLIFY_URL}/.netlify/functions/admin-create-user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(25000),
+    });
+    const raw = await res.text();
+    let data = {};
+    try { data = JSON.parse(raw); } catch { data = { raw }; }
+
+    jsonBox.textContent = `HTTP ${res.status}\n\n` + JSON.stringify(data, null, 2);
+
+    if (res.ok && data.id) {
+      showStatus('create-result', 'ok',
+        `✅ Compte créé avec succès !\n` +
+        `  ID: ${data.id}\n  Email: ${data.email}\n  Rôle: ${data.role}\n` +
+        `  Auth confirmé: ${data._authConfirmed ? '✅' : '❌'}\n` +
+        `  Sauvegardé en DB: ${data._savedToDb ? '✅' : '⚠️'}`
+      );
+      log('ok', `✅ Créé : ${email} (id=${data.id}) rôle=${data.role}`);
+      log('ok', `  Auth: ✅ DB: ${data._savedToDb ? '✅' : '⚠️'} Existing: ${data.was_existing ? 'oui (réparé)' : 'non'}`);
+      if (data._steps) {
+        const s = data._steps;
+        log('info', `  Steps → auth:${s.auth?.status} platform_users:${s.platform_users?.status} profiles:${s.profiles?.status}`);
+        if (s.platform_users?.error) log('warn', `  ⚠️ platform_users: ${s.platform_users.error}`);
+        if (s.profiles?.error)       log('warn', `  ⚠️ profiles: ${s.profiles.error}`);
+      }
+      toast(`✅ ${email} créé !`, 'ok');
+      await loadUsers();
+      document.getElementById('c-name').value = '';
+      document.getElementById('c-email').value = '';
+      document.getElementById('c-pw').value = '';
+    } else {
+      const errMsg = data.error || `HTTP ${res.status}`;
+      showStatus('create-result', 'error', `❌ Erreur : ${errMsg}`);
+      log('error', `❌ Création échouée (${res.status}): ${errMsg}`);
+      if (data._steps) {
+        log('warn', '  Détails steps : ' + JSON.stringify(data._steps));
+      }
+      toast(`❌ ${errMsg}`, 'err');
+    }
+  } catch(e) {
+    const msg = e.name === 'AbortError' ? 'Timeout (25s) — Vérifiez Netlify.' : e.message;
+    showStatus('create-result', 'error', `❌ Exception : ${msg}`);
+    log('error', `❌ Exception : ${msg}`);
+    toast('❌ ' + msg, 'err');
+    jsonBox.textContent += '\n\nException: ' + msg;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '➕ Créer l\'utilisateur';
+  }
+}
+
+// ══════════════════════════════════════════
+//  CHARGER LES UTILISATEURS
+// ══════════════════════════════════════════
+async function loadUsers() {
+  if (!session) return;
+  log('info', 'Chargement des utilisateurs depuis platform_users...');
+  try {
+    const { data, error, status } = await sb.from('platform_users')
+      .select('id,email,full_name,role,app_access,is_active,company_id')
+      .order('created_at', { ascending: false });
+
+    // Gestion erreur RLS (500 ou 403)
+    if (error) {
+      if (status === 500 || error.code === 'PGRST301' || error.message?.includes('infinite recursion')) {
+        log('warn', `⚠️ RLS bloque l'accès à platform_users (${status}) — exécutez sql/fix-permissions-modules.sql dans Supabase`);
+        showStatus('dnd-status', 'warning',
+          `⚠️ La politique RLS bloque la lecture de platform_users.\n` +
+          `→ Exécutez sql/fix-permissions-modules.sql dans Supabase SQL Editor.\n` +
+          `   https://supabase.com/dashboard/project/mfyhktnzjodaqfocupcn/sql/new`
+        );
+        return;
+      }
+      throw error;
+    }
+
+    allUsers = (data || []).filter(u => u.role !== 'superadmin');
+    log('ok', `✅ ${allUsers.length} utilisateur(s) chargé(s).`);
+    renderDndBoard();
+
+    if (!document.getElementById('dnd-status')?.textContent?.includes('⚠️'))
+      hideStatus('dnd-status');
+
+  } catch(e) {
+    log('error', `❌ Erreur chargement users: ${e.message}`);
+    showStatus('dnd-status', 'error', `❌ ${e.message}`);
+  }
+}
+
+// ══════════════════════════════════════════
+//  DRAG & DROP BOARD
+// ══════════════════════════════════════════
+const ROLES = ['admin','manager','commercial','technicien','lecture'];
+
+function renderDndBoard() {
+  ROLES.forEach(role => {
+    const container = document.getElementById(`items-${role}`);
+    const cnt = document.getElementById(`cnt-${role}`);
+    const users = allUsers.filter(u => u.role === role);
+    cnt.textContent = users.length;
+    if (!users.length) {
+      container.innerHTML = '<div class="dnd-empty">Aucun utilisateur</div>';
+      return;
+    }
+    container.innerHTML = users.map(u => `
+      <div class="dnd-card" draggable="true"
+           data-id="${u.id}" data-role="${u.role}"
+           ondragstart="onDragStart(event,'${u.id}')"
+           ondragend="onDragEnd(event)">
+        <div class="dnd-card-name">${escHtml(u.full_name || '—')}</div>
+        <div class="dnd-card-email">${escHtml(u.email || '—')}</div>
+        <div>
+          <span class="dnd-card-role role-${u.role}">${u.role}</span>
+          ${!u.is_active ? '<span class="dnd-card-role" style="background:rgba(239,68,68,.2);color:#fca5a5;margin-left:4px">inactif</span>' : ''}
+        </div>
+        <div class="dnd-card-apps">
+          ${(u.app_access||[]).map(a => `<span class="dnd-card-app-badge">${appIcon(a)} ${a}</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function clearDndBoard() {
+  ROLES.forEach(role => {
+    document.getElementById(`items-${role}`).innerHTML = '<div class="dnd-empty">—</div>';
+    document.getElementById(`cnt-${role}`).textContent = '0';
+  });
+}
+
+function onDragStart(event, userId) {
+  draggedUserId = userId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', userId);
+  setTimeout(() => {
+    const el = document.querySelector(`[data-id="${userId}"]`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function onDragEnd(event) {
+  document.querySelectorAll('.dnd-card.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.dnd-col.over').forEach(el => el.classList.remove('over'));
+}
+
+function onDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const col = event.currentTarget;
+  if (!col.classList.contains('over')) col.classList.add('over');
+}
+
+function onDragLeave(event) {
+  const col = event.currentTarget;
+  const rect = col.getBoundingClientRect();
+  // Vérifier qu'on quitte réellement la colonne
+  if (event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top  || event.clientY > rect.bottom) {
+    col.classList.remove('over');
+  }
+}
+
+async function onDrop(event, newRole) {
+  event.preventDefault();
+  const col = event.currentTarget;
+  col.classList.remove('over');
+
+  const userId = draggedUserId || event.dataTransfer.getData('text/plain');
+  if (!userId) return;
+
+  const user = allUsers.find(u => u.id === userId);
+  if (!user) return;
+  if (user.role === newRole) { log('muted', `(${user.email} déjà en rôle ${newRole})`); return; }
+
+  const oldRole = user.role;
+  log('info', `🔄 ${user.email} : ${oldRole} → ${newRole}`);
+
+  // Mise à jour optimiste UI
+  user.role = newRole;
+  renderDndBoard();
+
+  // Sauvegarde Supabase
+  try {
+    const now = new Date().toISOString();
+
+    // 1. Mettre à jour platform_users
+    const { error: puErr } = await sb.from('platform_users')
+      .update({ role: newRole, updated_at: now })
+      .eq('id', userId);
+    if (puErr) throw puErr;
+
+    // 2. Mettre à jour profiles (propagation rôle GestApp)
+    const { error: prErr } = await sb.from('profiles')
+      .update({ role: newRole, updated_at: now })
+      .eq('id', userId);
+    // Non bloquant si profiles n'existe pas
+    if (prErr) log('warn', `  ⚠️ profiles update: ${prErr.message}`);
+
+    log('ok', `✅ Rôle mis à jour : ${user.email} → ${newRole}`);
+    toast(`✅ ${user.full_name || user.email} → ${newRole}`, 'ok');
+    // Masquer alerte contrainte si succès
+    document.getElementById('alert-constraint').style.display = 'none';
+
+  } catch(e) {
+    // Rollback UI
+    user.role = oldRole;
+    renderDndBoard();
+
+    const isConstraintError = e.message && (
+      e.message.includes('violates check constraint') ||
+      e.message.includes('role_check') ||
+      e.message.includes('check_constraint')
+    );
+
+    if (isConstraintError) {
+      // Afficher l'alerte détaillée avec le SQL à exécuter
+      showConstraintAlert();
+      log('error', `❌ CONTRAINTE SQL : la colonne "role" de platform_users n'accepte pas "${newRole}"`);
+      log('warn',  `   → Exécutez sql/fix-role-constraint.sql dans Supabase pour corriger.`);
+      log('warn',  `   → https://supabase.com/dashboard/project/mfyhktnzjodaqfocupcn/sql/new`);
+      toast('⚠️ Contrainte SQL — cliquez "Voir le fix SQL" ci-dessus', 'err');
+    } else {
+      log('error', `❌ Erreur update : ${e.message}`);
+      toast('❌ Erreur : ' + e.message, 'err');
+    }
+  }
+
+  draggedUserId = null;
+}
+
+// ══════════════════════════════════════════
+//  ALERTE CONTRAINTE SQL
+// ══════════════════════════════════════════
+const FIX_ROLE_SQL = `-- =====================================================
+--  FIX v4.0 : Contraintes + Permissions granulaires
+--  Coller ce SQL dans :
+--  https://supabase.com/dashboard/project/mfyhktnzjodaqfocupcn/sql/new
+--  puis cliquer RUN
+-- =====================================================
+
+-- 1. Correction contrainte CHECK rôles platform_users
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT constraint_name FROM information_schema.table_constraints
+    WHERE table_schema='public' AND table_name='platform_users' AND constraint_type='CHECK'
+  LOOP
+    EXECUTE format('ALTER TABLE public.platform_users DROP CONSTRAINT IF EXISTS %I', r.constraint_name);
+    RAISE NOTICE 'Supprimé : %', r.constraint_name;
+  END LOOP;
+END $$;
+
+ALTER TABLE public.platform_users
+  ADD CONSTRAINT platform_users_role_check
+  CHECK (role IN ('superadmin','admin','manager','commercial','technicien','lecture'));
+
+-- 2. Correction contrainte CHECK rôles profiles
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT constraint_name FROM information_schema.table_constraints
+    WHERE table_schema='public' AND table_name='profiles'
+      AND constraint_type='CHECK' AND constraint_name LIKE '%role%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS %I', r.constraint_name);
+  END LOOP;
+END $$;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_role_check
+  CHECK (role IN ('superadmin','admin','manager','commercial','comptable','technicien','lecture'));
+
+-- 3. Colonne module_permissions (permissions granulaires v4.0)
+ALTER TABLE public.platform_users
+  ADD COLUMN IF NOT EXISTS module_permissions JSONB DEFAULT '{}'::jsonb;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS module_permissions JSONB DEFAULT '{}'::jsonb;
+
+-- 4. Trigger sync platform_users → profiles
+CREATE OR REPLACE FUNCTION sync_platform_to_profiles()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.profiles SET
+    role = NEW.role,
+    module_permissions = NEW.module_permissions,
+    is_active = NEW.is_active,
+    updated_at = NOW()
+  WHERE id = NEW.id;
+  IF NOT FOUND THEN
+    INSERT INTO public.profiles (id, email, full_name, name, role, company_id, is_active, module_permissions, created_at, updated_at)
+    VALUES (NEW.id, NEW.email, NEW.full_name, NEW.full_name, NEW.role, NEW.company_id, NEW.is_active, NEW.module_permissions, NOW(), NOW())
+    ON CONFLICT (id) DO UPDATE SET role=EXCLUDED.role, module_permissions=EXCLUDED.module_permissions, updated_at=NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_sync_platform_to_profiles ON public.platform_users;
+CREATE TRIGGER trg_sync_platform_to_profiles
+  AFTER INSERT OR UPDATE OF role, module_permissions, is_active ON public.platform_users
+  FOR EACH ROW EXECUTE FUNCTION sync_platform_to_profiles();
+
+-- Vérification
+SELECT constraint_name, check_clause
+FROM information_schema.table_constraints tc
+JOIN information_schema.check_constraints cc USING (constraint_name)
+WHERE tc.table_schema='public' AND tc.table_name='platform_users';
+
+SELECT column_name, data_type FROM information_schema.columns
+WHERE table_name='platform_users' AND column_name='module_permissions';`;
+
+function showConstraintAlert() {
+  const alert = document.getElementById('alert-constraint');
+  const textarea = document.getElementById('sql-fix-text');
+  if (textarea) textarea.value = FIX_ROLE_SQL;
+  alert.style.display = 'block';
+  alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copySql() {
+  const sql = document.getElementById('sql-fix-text')?.value || FIX_ROLE_SQL;
+  navigator.clipboard.writeText(sql)
+    .then(() => toast('✅ SQL copié dans le presse-papier !', 'ok'))
+    .catch(() => toast('❌ Copie manuelle — sélectionnez le texte.', 'err'));
+}
+
+// ══════════════════════════════════════════
+//  UTILITAIRES
+// ══════════════════════════════════════════
+function genPw() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+  let pw = '';
+  for (let i = 0; i < 12; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('c-pw').value = pw;
+}
+
+function toggleChip(id, cb) {
+  document.getElementById(id).classList.toggle('checked', cb.checked);
+}
+
+function appIcon(id) {
+  return { gestapp: '🏗️', famille: '💰', calcul: '🎨' }[id] || '📱';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const icons = { ok: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  el.className = `status-box status-${type}`;
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="icon">${icons[type] || 'ℹ️'}</span><span class="msg" style="white-space:pre-wrap">${escHtml(msg)}</span>`;
+}
+
+function hideStatus(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function log(type, msg) {
+  const box = document.getElementById('log-box');
+  const ts = new Date().toLocaleTimeString('fr-FR');
+  const line = document.createElement('div');
+  line.className = `log-line log-${type}`;
+  line.textContent = `[${ts}] ${msg}`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-box').innerHTML = '<div class="log-line log-muted">— Journal vidé —</div>';
+}
+
+let _toastTimer;
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.className = type;
+  el.textContent = msg;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 4000);
+}
+</script>
+</body>
+</html>

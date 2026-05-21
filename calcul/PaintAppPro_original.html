@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>PaintAppPro — v1.2.2 (offline)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--p:#1f6feb;--bg:#f3f4f6;--card:#fff;--txt:#111827;--muted:#6b7280;--bd:#e5e7eb;--ok:#10b981;--warn:#f59e0b;--bad:#ef4444}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+body{margin:0;background:var(--bg);color:var(--txt)}
+header{background:var(--p);color:#fff;padding:12px 14px;font-weight:900;display:flex;gap:10px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+header .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.wrap{padding:10px;max-width:1200px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 10px 30px rgba(15,23,42,.10)}
+h3{margin:0 0 10px 0}
+label{display:block;margin-top:8px;font-size:12px;color:var(--muted);font-weight:800}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;margin-top:6px;background:#fff}
+textarea{min-height:70px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:740px){.row{grid-template-columns:1fr}}
+.btn{border:none;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer;user-select:none}
+.btn:active{transform:scale(.99)}
+.btn.primary{background:var(--p);color:#fff}
+.btn.ghost{background:#f1f5f9;color:#111827;border:1px solid var(--bd)}
+.btn.danger{background:#fee2e2;border:1px solid #fecaca;color:#991b1b}
+.small{font-size:12px;color:var(--muted);white-space:pre-wrap}
+table{width:100%;border-collapse:collapse;margin-top:10px;display:block;overflow:auto}
+thead,tbody{display:table;width:100%;table-layout:fixed}
+th,td{border-bottom:1px solid var(--bd);padding:8px;font-size:13px;vertical-align:top}
+th{background:#f8fafc;text-align:left}
+.actions{white-space:nowrap}
+.actions .btn{padding:7px 9px;border-radius:10px;font-size:12px;margin-right:6px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#1e40af;font-size:12px;font-weight:900}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:900px){.kpi{grid-template-columns:repeat(2,1fr)}}
+.kpi .box{border:1px solid var(--bd);border-radius:12px;padding:10px;background:#f9fafb}
+.kpi .t{font-size:11px;color:var(--muted);font-weight:900}
+.kpi .v{font-size:16px;font-weight:1000;margin-top:2px}
+hr{border:none;border-top:1px solid var(--bd);margin:12px 0}
+.toggle{display:flex;gap:10px;align-items:center;margin-top:10px}
+.toggle input{width:auto;margin:0}
+.hidden{display:none!important}
+
+nav{display:flex;gap:8px;padding:10px;flex-wrap:wrap}
+nav button{flex:1;min-width:120px;border:none;border-radius:12px;padding:10px 12px;font-weight:900;background:#e5e7eb}
+nav button.active{background:var(--p);color:#fff}
+
+.modalBack{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:12px;z-index:9999}
+.modal{width:min(980px,100%);background:#fff;border:1px solid var(--bd);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.25);overflow:hidden}
+.modal header{background:#111827;color:#fff;padding:10px 12px;font-weight:900}
+.modal .content{padding:12px;max-height:72vh;overflow:auto}
+.modal .footer{padding:12px;border-top:1px solid var(--bd);display:flex;gap:10px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<header>
+  <div>🎨 PaintAppPro — v1.2.2</div>
+  <div class="right">
+    <button class="btn ghost" id="btnDiag">🧪 Diagnostic</button>
+  </div>
+</header>
+
+<nav class="wrap" style="padding-top:0">
+  <button id="tabProduits" class="active">Produits</button>
+  <button id="tabSystemes">Systèmes</button>
+  <button id="tabCalcul">Calcul</button>
+  <button id="tabStats">Statistiques</button>
+  <button id="tabParams">Paramètres</button>
+  <button id="tabMarges">Marges</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- PRODUITS -->
+  <section id="viewProduits">
+    <div class="card">
+      <h3>➕ Ajouter / Modifier un produit</h3>
+
+      <div class="row">
+        <div><label>Marque</label><input id="p_marque" placeholder="ex: Jotun"></div>
+        <div><label>Nom du produit</label><input id="p_nom" placeholder="ex: Majestic Matt"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Type</label>
+          <select id="p_type">
+            <option value="">Choisir…</option>
+            <option>Primaire</option>
+            <option>Enduit</option>
+            <option>Finition</option>
+          </select>
+        </div>
+        <div>
+          <label>Unité produit</label>
+          <select id="p_unite">
+            <option value="">Choisir…</option>
+            <option value="L">Litre (L)</option>
+            <option value="kg">Kilogramme (kg)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Rendement</label><input id="p_rendement" type="number" step="0.01" placeholder="m² / unité de rendement"></div>
+        <div>
+          <label>Unité du rendement</label>
+          <select id="p_rend_unite">
+            <option value="">Auto (= unité produit)</option>
+            <option value="L">m² / L</option>
+            <option value="kg">m² / kg</option>
+          </select>
+          <div class="small">Si unité rendement ≠ unité produit, renseigne la densité.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Densité (kg/L) (option)</label><input id="p_density" type="number" step="0.01" placeholder="ex: 1.60"></div>
+        <div><label>Pertes par défaut (%) (option)</label><input id="p_pertes" type="number" step="0.1" placeholder="ex: 5"></div>
+      </div>
+
+      <hr>
+      <h3 style="margin:0">📦 Emballages (formats)</h3>
+      <div class="small">Le calcul utilise le <b>prix d’achat</b> pour le coût et le <b>prix de vente</b> (option) pour l’analyse marge.</div>
+
+      <div class="row">
+        <div><label>Taille emballage</label><input id="pack_size" type="number" step="0.01" placeholder="ex: 1 / 4 / 18"></div>
+        <div><label>Prix d’achat (DH)</label><input id="pack_buy" type="number" step="0.01" placeholder="ex: 180"></div>
+      </div>
+      <div class="row">
+        <div><label>Prix de vente (DH) (option)</label><input id="pack_sell" type="number" step="0.01" placeholder="ex: 220"></div>
+        <div><label>&nbsp;</label><button class="btn ghost" id="btnAddPack" style="margin-top:6px">➕ Ajouter emballage</button></div>
+      </div>
+
+      <table>
+        <thead><tr><th>Format</th><th>Achat</th><th>Vente</th><th></th></tr></thead>
+        <tbody id="packs_list"></tbody>
+      </table>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnSaveProduit">💾 Enregistrer produit</button>
+        <button class="btn ghost" id="btnCancelProd">↩ Réinitialiser</button>
+      </div>
+      <div class="small">Données stockées localement (offline).</div>
+    </div>
+
+    <div class="card">
+      <h3>📦 Liste des produits</h3>
+
+      <div class="row" style="margin-top:8px">
+        <div><label>Recherche</label><input id="p_search" placeholder="Marque / produit…"></div>
+        <div>
+          <label>Filtre type</label>
+          <select id="p_typeFilter">
+            <option value="">Tous</option>
+            <option>Primaire</option>
+            <option>Enduit</option>
+            <option>Finition</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Filtre marque</label><select id="p_brandFilter"><option value="">Toutes</option></select></div>
+        <div class="small" style="display:flex;align-items:flex-end"><div>Astuce: tape 2 lettres → résultat rapide.</div></div>
+      </div>
+
+      <table>
+        <thead><tr><th>Produit</th><th>Type</th><th>Rendement</th><th>Emballages</th><th></th></tr></thead>
+        <tbody id="p_liste"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SYSTEMES -->
+  <section id="viewSystemes" class="hidden">
+    <div class="card">
+      <h3>🧩 Créer / Modifier un système</h3>
+
+      <div class="row">
+        <div><label>Nom du système</label><input id="s_nom" placeholder="ex: Mur intérieur (1P + 2E + 2F)"></div>
+        <div>
+          <label>Type (INT/EXT)</label>
+          <select id="s_type">
+            <option value="">Choisir…</option>
+            <option value="INT">INT</option>
+            <option value="EXT">EXT</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Support (option)</label>
+          <select id="s_support">
+            <option value="">Choisir…</option>
+            <option>Murs intérieurs</option>
+            <option>Plafonds</option>
+            <option>Murs extérieurs</option>
+            <option>Bois / Métal</option>
+            <option>Autre</option>
+          </select>
+        </div>
+        <div><label>Pertes système (%) (option)</label><input id="s_pertes" type="number" step="0.1" placeholder="ex: 2"></div>
+      </div>
+
+      <label>Description (option)</label>
+      <textarea id="s_desc" placeholder="Préparation, remarques…"></textarea>
+
+      <hr>
+      <h3 style="margin:0">➕ Ajouter une étape</h3>
+      <div class="row">
+        <div>
+          <label>Recherche produit</label>
+          <input id="step_search" placeholder="Tape pour filtrer…">
+        </div>
+        <div>
+          <label>Produit</label>
+          <select id="step_prod"></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Nombre de couches</label><input id="step_couches" type="number" step="1" min="1" value="1"></div>
+        <div><label>Main d’œuvre étape (DH/m²)</label><input id="step_mo" type="number" step="0.01" placeholder="ex: 6.5"></div>
+      </div>
+
+      <button class="btn primary" id="btnAddStep">➕ Ajouter l’étape</button>
+
+      <table>
+        <thead><tr><th>Étape</th><th>Couches</th><th>MO</th><th></th></tr></thead>
+        <tbody id="steps_list"></tbody>
+      </table>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnSaveSysteme">💾 Enregistrer système</button>
+        <button class="btn ghost" id="btnResetSysteme">↩ Réinitialiser</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📚 Liste des systèmes</h3>
+
+      <div class="row" style="margin-top:8px">
+        <div><label>Recherche</label><input id="s_search" placeholder="Nom / support…"></div>
+        <div>
+          <label>Filtre support</label>
+          <select id="s_supportFilter">
+            <option value="">Tous</option>
+            <option>Murs intérieurs</option>
+            <option>Plafonds</option>
+            <option>Murs extérieurs</option>
+            <option>Bois / Métal</option>
+            <option>Autre</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Filtre type</label>
+          <select id="s_typeFilter">
+            <option value="">Tous</option>
+            <option value="INT">INT</option>
+            <option value="EXT">EXT</option>
+          </select>
+        </div>
+        <div class="small" style="display:flex;align-items:flex-end"><div>Filtres rapides pour retrouver un système.</div></div>
+      </div>
+
+      <table>
+        <thead><tr><th>Système</th><th>Support</th><th>Étapes</th><th></th></tr></thead>
+        <tbody id="s_liste"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CALCUL -->
+  <section id="viewCalcul" class="hidden">
+    <div class="card">
+      <h3>🧮 Calcul — Besoins & Coûts</h3>
+
+      <div class="row" style="margin-top:8px">
+        <button class="btn primary" type="button" id="btnTypePose">Fourniture + pose</button>
+        <button class="btn ghost" type="button" id="btnTypeFour">Fourniture seule</button>
+        <input type="hidden" id="c_type" value="four_pose">
+      </div>
+
+      <div class="row">
+        <div><label>Système</label><select id="c_systeme"></select></div>
+        <div><label>Surface (m²)</label><input id="c_surface" type="number" step="0.01" placeholder="ex: 5000"></div>
+      </div>
+
+      <div class="row">
+        <div><label>Projet / devis</label><input id="c_projet" placeholder="ex: Villa – Murs intérieurs"></div>
+        <div><label>Client (option)</label><input id="c_client" placeholder="ex: Mr X / Société Y"></div>
+      </div>
+
+      <div id="moBlock">
+        <div class="row">
+          <div><label>Pertes chantier (%) (option)</label><input id="c_pertes" type="number" step="0.1" placeholder="ex: 3"></div>
+          <div>
+            <label>Mode main d’œuvre</label>
+            <select id="c_mo_mode">
+              <option value="global">Global (DH/m²)</option>
+              <option value="etapes">Par étapes (depuis le système)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div><label>Main d’œuvre global (DH/m²)</label><input id="c_mo" type="number" step="0.01" placeholder="ex: 25"></div>
+          <div>
+            <label>Optimisation emballages (coût achat)</label>
+            <select id="c_pack_mode">
+              <option value="least_packs" selected>Moins de seaux</option>
+              <option value="min_cost">Coût minimum</option>
+              <option value="prefer_large">Grands formats</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Marge (%) (interne)</label><input id="c_marge" type="number" step="0.1" placeholder="ex: 15"></div>
+        <div><label>TVA (%) (interne)</label><input id="c_tva" type="number" step="0.1" placeholder="ex: 20"></div>
+      </div>
+
+      <div class="toggle">
+        <input id="c_arrondi" type="checkbox" checked>
+        <label style="margin:0">Arrondir au bidon/sac (selon emballages)</label>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnCompute">Calculer</button>
+        <button class="btn ghost" id="btnSaveHistory">💾 Enregistrer historique</button>
+      </div>
+
+      <div class="row">
+        <button class="btn ghost" id="btnPDFClient">🖨 PDF Client</button>
+        <button class="btn ghost" id="btnPDFInterne">🖨 PDF Interne</button>
+      </div>
+
+      <hr>
+
+      <div class="kpi">
+        <div class="box"><div class="t">Coût matière</div><div class="v" id="k_matiere">—</div></div>
+        <div class="box"><div class="t">Main d’œuvre</div><div class="v" id="k_mo">—</div></div>
+        <div class="box"><div class="t">Total TTC</div><div class="v" id="k_ttc">—</div></div>
+        <div class="box"><div class="t">Prix au m²</div><div class="v" id="k_m2">—</div></div>
+      </div>
+
+      <div class="small" id="calc_note" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h3>📋 Détails produits</h3>
+      <table>
+        <thead><tr><th>Produit</th><th>Couches</th><th>Rendement</th><th>Pertes</th><th>Quantité</th><th>Bidons/Sacs</th><th>Coût</th></tr></thead>
+        <tbody id="c_details"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="viewStats" class="hidden">
+    <div class="card">
+      <h3>📊 Statistiques</h3>
+
+      <div class="row">
+        <div>
+          <label>Période</label>
+          <select id="st_period">
+            <option value="30">30 derniers jours</option>
+            <option value="90">90 derniers jours</option>
+            <option value="365">12 mois</option>
+            <option value="all" selected>Toute la période</option>
+          </select>
+        </div>
+        <div>
+          <label>Statut</label>
+          <select id="st_status">
+            <option value="" selected>Tous</option>
+            <option value="en_cours">En cours</option>
+            <option value="valide">Validé</option>
+            <option value="annule">Annulé</option>
+            <option value="facture">Facturé</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="kpi">
+        <div class="box"><div class="t">Nombre</div><div class="v" id="st_k_count">—</div></div>
+        <div class="box"><div class="t">Total TTC</div><div class="v" id="st_k_ttc">—</div></div>
+        <div class="box"><div class="t">Devis validés</div><div class="v" id="st_k_valide">—</div></div>
+        <div class="box"><div class="t">Facturés</div><div class="v" id="st_k_facture">—</div></div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="btnExportHist">⬇ Export Historique CSV</button>
+        <button class="btn danger" id="btnClearHist">🧨 Vider historique</button>
+      </div>
+
+      <hr>
+      <h3 style="margin:0">Répartition par statut</h3>
+      <table>
+        <thead><tr><th>Statut</th><th>Nombre</th><th>Total TTC</th></tr></thead>
+        <tbody id="st_by_status"></tbody>
+      </table>
+
+      <hr>
+      <h3 style="margin:0">Liste</h3>
+      <table>
+        <thead><tr><th>Devis</th><th style="width:180px">Statut</th><th style="width:150px;text-align:right">Total TTC</th><th style="width:260px"></th></tr></thead>
+        <tbody id="st_list"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PARAMS -->
+  <section id="viewParams" class="hidden">
+    <div class="card">
+      <h3>🏢 Paramètres société</h3>
+
+      <div class="toggle">
+        <input id="pdf_hide_internal" type="checkbox" checked>
+        <label style="margin:0">PDF Client : masquer marge/TVA/détails internes</label>
+      </div>
+
+      <div class="row">
+        <div><label>Nom société</label><input id="co_name" placeholder="ex: Solutec Paint"></div>
+        <div><label>Téléphone (option)</label><input id="co_phone" placeholder="+212..."></div>
+      </div>
+
+      <div class="row">
+        <div><label>Email (option)</label><input id="co_email" placeholder="contact@..."></div>
+        <div><label>ICE (option)</label><input id="co_ice" placeholder="ICE"></div>
+      </div>
+
+      <label>Adresse (option)</label>
+      <textarea id="co_address" placeholder="Adresse complète"></textarea>
+
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>Logo (option)</label>
+          <input id="co_logo" type="file" accept="image/*">
+          <div class="small">Logo stocké localement.</div>
+        </div>
+        <div>
+          <label>Aperçu</label>
+          <div id="logo_preview" class="small">—</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnSaveCompany">💾 Enregistrer</button>
+        <button class="btn ghost" id="btnClearCompany">↩ Réinitialiser</button>
+      </div>
+
+      <div class="small" style="margin-top:8px">Android PDF: utilise Chrome et autorise les popups si nécessaire.</div>
+    </div>
+
+    <div class="card">
+      <h3>🗄️ Gestion des données (PRO)</h3>
+      <div class="small">Backup/Import JSON + Export/Import Excel (CSV) Produits & Systèmes + Historique.</div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="btnBackup">⬇ Backup (JSON complet)</button>
+        <label class="btn ghost" style="display:inline-flex;align-items:center;gap:8px;margin:0;justify-content:center">
+          ⬆ Import (JSON)
+          <input id="importFile" type="file" accept="application/json" style="display:none">
+        </label>
+      </div>
+
+      <hr>
+      <h3 style="margin:0">📄 Excel (CSV)</h3>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="btnExportProdCSV">⬇ Export Produits (CSV)</button>
+        <label class="btn ghost" style="display:inline-flex;align-items:center;gap:8px;margin:0;justify-content:center">
+          ⬆ Import Produits (CSV)
+          <input id="importProdCSV" type="file" accept=".csv,text/csv" style="display:none">
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="btnExportSysCSV">⬇ Export Systèmes (CSV)</button>
+        <label class="btn ghost" style="display:inline-flex;align-items:center;gap:8px;margin:0;justify-content:center">
+          ⬆ Import Systèmes (CSV)
+          <input id="importSysCSV" type="file" accept=".csv,text/csv" style="display:none">
+        </label>
+      </div>
+
+      <hr>
+      <div class="row">
+        <button class="btn ghost" id="btnExportHist2">⬇ Export Historique (CSV)</button>
+        <button class="btn danger" id="btnClearHist2">🧨 Vider historique</button>
+      </div>
+
+      <div class="small" style="margin-top:8px">CSV Excel : séparateur point-virgule (;).</div>
+    </div>
+  </section>
+
+  <!-- MARGES -->
+  <section id="viewMarges" class="view hidden">
+  <div class="card">
+    <div class="hrow">
+      <h2>📈 Marges — Devis (PRO)</h2>
+      <div class="small">Choisis le type de marge + filtres + cumul multi-devis.</div>
+    <div id="m_emptyNotice" class="callout warn hidden" style="margin-top:10px">
+      <b>Aucun devis trouvé dans cette version.</b>
+      <div class="small" style="margin-top:6px">
+        Si tu as déjà des devis dans une ancienne version, tu as 2 solutions :
+        <ol style="margin:6px 0 0 18px">
+          <li><b>Solution rapide</b> : remplace l'ancien fichier HTML (même nom) par celui-ci (même dossier). Comme ça tu gardes les données.</li>
+          <li><b>Solution sûre</b> : ouvre l'ancienne version → <b>Paramètres</b> → <b>Backup (JSON complet)</b>. Ensuite ouvre cette version → <b>Paramètres</b> → <b>Import (JSON)</b>.</li>
+        </ol>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn ghost" id="btnGoParamsFromMarges">Aller à Paramètres</button>
+      </div>
+    </div>
+
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label>Mode marge</label>
+        <select id="m_mode">
+          <option value="produit">Marge Produit (achat vs vente)</option>
+          <option value="calcul">Marge Calcul (marge % du devis)</option>
+          <option value="mix">Marge Mix (vente produits + MO)</option>
+          <option value="all">Comparatif (Produit + Calcul + Mix)</option>
+        </select>
+      </div>
+      <div>
+        <label>Recherche</label>
+        <input id="m_search" placeholder="Projet / client / système…">
+      </div>
+    </div>
+
+    <div class="grid4" style="margin-top:10px">
+      <div>
+        <label>Du</label>
+        <input id="m_from" type="date">
+      </div>
+      <div>
+        <label>Au</label>
+        <input id="m_to" type="date">
+      </div>
+      <div>
+        <label>Système</label>
+        <select id="m_sys"><option value="">Tous</option></select>
+      </div>
+      <div>
+        <label>Client</label>
+        <select id="m_client"><option value="">Tous</option></select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;gap:10px;flex-wrap:wrap">
+      <button class="btn ghost" id="m_sel_all">Tout sélectionner</button>
+      <button class="btn ghost" id="m_sel_none">Aucun</button>
+      <button class="btn ghost" id="m_sel_clear">Effacer sélection</button>
+      <div class="small" id="m_sel_info"></div>
+    </div>
+
+    <div class="kpi" style="margin-top:12px" id="m_kpis">
+      <div class="box"><div class="t">Devis</div><div class="v" id="mk_count">—</div></div>
+      <div class="box"><div class="t">Coût</div><div class="v" id="mk_cost">—</div></div>
+      <div class="box"><div class="t">Vente</div><div class="v" id="mk_sale">—</div></div>
+      <div class="box"><div class="t">Marge</div><div class="v" id="mk_profit">—</div></div>
+      <div class="box"><div class="t">Marge %</div><div class="v" id="mk_pct">—</div></div>
+    </div>
+
+    <div class="small" id="m_note" style="margin-top:8px"></div>
+
+    <div style="overflow:auto;margin-top:12px">
+      <table class="table">
+        <thead id="m_thead">
+          <tr>
+            <th style="width:34px"></th>
+            <th>Devis</th>
+            <th>Coût</th>
+            <th>Vente</th>
+            <th>Marge</th>
+            <th style="width:90px"></th>
+          </tr>
+        </thead>
+        <tbody id="m_list"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div id="modalRoot" class="hidden"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* =======================
+   STORAGE
+======================= */
+const KEY = { PROD:"paintapppro_prod", SYS:"paintapppro_sys", HIST:"paintapppro_hist", COMP:"paintapppro_comp" };
+
+function uid(prefix){ return (prefix||"id")+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8); }
+function money(n){ return (isFinite(n)? Number(n).toFixed(2) : "0.00") + " DH"; }
+function round2(x){ x=Number(x||0); return Math.round(x*100)/100; }
+function num(n){ return (isFinite(n)? Number(n).toFixed(2) : "—"); }
+function esc(s){ return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;"); }
+function fmtDate(ts){ try{return new Date(ts).toLocaleString("fr-FR");}catch(e){return "";} }
+function pct(val){ const n=parseFloat(val); return (isFinite(n)&&n>0)?n:0; }
+function ceil(n){ return Math.ceil(n-1e-9); }
+
+const $ = (id)=>document.getElementById(id);
+
+let produits = safeJson(localStorage.getItem(KEY.PROD), []);
+let systemes = safeJson(localStorage.getItem(KEY.SYS), []);
+let devisHistory = safeJson(localStorage.getItem(KEY.HIST), []);
+devisHistory = devisHistory;
+let company  = safeJson(localStorage.getItem(KEY.COMP), null) || { name:"", phone:"", email:"", ice:"", address:"", pdfHideInternal:true, logoDataUrl:"" };
+
+let editProdId=null, tempPacks=[];
+let editSysId=null, tempSteps=[];
+let lastCalc=null;
+
+function safeJson(txt, fallback){
+  try{ return JSON.parse(txt||""); }catch(e){ return fallback; }
+}
+function persist(){
+  localStorage.setItem(KEY.PROD, JSON.stringify(produits));
+  localStorage.setItem(KEY.SYS, JSON.stringify(systemes));
+  localStorage.setItem(KEY.HIST, JSON.stringify(devisHistory));
+  localStorage.setItem(KEY.COMP, JSON.stringify(company));
+}
+
+/* =======================
+   NAV
+======================= */
+const views = {
+  produits: $("viewProduits"),
+  systemes: $("viewSystemes"),
+  calcul: $("viewCalcul"),
+  stats: $("viewStats"),
+  params: $("viewParams"),
+  marges: $("viewMarges")
+};
+const tabs = {
+  produits: $("tabProduits"),
+  systemes: $("tabSystemes"),
+  calcul: $("tabCalcul"),
+  stats: $("tabStats"),
+  params: $("tabParams"),
+  marges: $("tabMarges")
+};
+function setView(name){
+  Object.keys(views).forEach(k=>{
+    views[k].classList.toggle("hidden", k!==name);
+    tabs[k].classList.toggle("active", k===name);
+  });
+  if(name==="systemes"){ refreshStepProducts(); renderSystemes(); }
+  if(name==="calcul"){ refreshCalculSelects(); }
+  if(name==="stats"){ renderStats(); }
+  if(name==="params"){ loadCompanyForm(); }
+  if(name==="marges"){ renderMarges(); }
+  if(name==="produits"){ refreshBrandFilter(); renderProduits(); renderPacks(); }
+}
+
+/* =======================
+   MODAL / DIAG
+======================= */
+let diagLog=[];
+function log(msg){ diagLog.push({ts:Date.now(),msg:String(msg)}); try{console.log("[PaintAppPro]",msg);}catch(e){} }
+window.addEventListener("error",(e)=>log("ERREUR JS: "+(e.message||"")+" @ "+(e.filename||"")+":"+e.lineno));
+
+function openModal(title, bodyHtml){
+  const root=$("modalRoot");
+  root.classList.remove("hidden");
+  root.innerHTML = `
+    <div class="modalBack" id="mb">
+      <div class="modal" role="dialog" aria-modal="true">
+        <header>${esc(title)}</header>
+        <div class="content">${bodyHtml}</div>
+        <div class="footer"><button class="btn ghost" id="btnCloseModal">Fermer</button></div>
+      </div>
+    </div>`;
+  $("btnCloseModal").onclick = closeModal;
+  $("mb").onclick = (ev)=>{ if(ev.target && ev.target.id==="mb") closeModal(); };
+}
+function closeModal(){ $("modalRoot").classList.add("hidden"); $("modalRoot").innerHTML=""; }
+
+function openDiag(){
+  const checks = [
+    ["Produits", typeof renderProduits==="function"],
+    ["Systèmes", typeof renderSystemes==="function"],
+    ["Calcul", typeof computeDevis==="function"],
+    ["PDF Client", typeof printPDFClient==="function"],
+    ["Stats", typeof renderStats==="function"],
+    ["CSV", typeof exportProduitsCSV==="function"]
+  ];
+  const rows = checks.map(([n,ok])=>`<tr><td>${esc(n)}</td><td>${ok?'<span class="badge">OK</span>':'<span class="badge" style="background:#fee2e2;color:#991b1b">KO</span>'}</td></tr>`).join("");
+  const logs = diagLog.slice(-25).map(x=>`• ${esc(fmtDate(x.ts))} — ${esc(x.msg)}`).join("<br>") || "—";
+  openModal("Diagnostic", `<div class="small">Si KO apparaît, c’est la cause des boutons morts.</div>
+    <table><thead><tr><th>Test</th><th>État</th></tr></thead><tbody>${rows}</tbody></table>
+    <hr><div class="small"><b>Derniers logs :</b><br>${logs}</div>`);
+}
+
+/* =======================
+   PRODUITS
+======================= */
+function resetProdForm(){
+  editProdId=null; tempPacks=[];
+  $("p_marque").value=""; $("p_nom").value=""; $("p_type").value=""; $("p_unite").value="";
+  $("p_rendement").value=""; $("p_rend_unite").value=""; $("p_density").value=""; $("p_pertes").value="";
+  $("pack_size").value=""; $("pack_buy").value=""; $("pack_sell").value="";
+  renderPacks();
+}
+
+function addPack(){
+  const size=parseFloat($("pack_size").value);
+  const buy=parseFloat($("pack_buy").value);
+  const sellRaw=$("pack_sell").value;
+  const sell = (sellRaw===""? null : parseFloat(sellRaw));
+
+  if(!(size>0)) return alert("Taille emballage invalide.");
+  if(!(buy>=0)) return alert("Prix achat invalide.");
+  if(sell!=null && !(sell>=0)) return alert("Prix vente invalide.");
+
+  tempPacks.push({id:uid("pk"), size, buy, sell:(sell==null?buy:sell)});
+  tempPacks.sort((a,b)=>a.size-b.size);
+  $("pack_size").value=""; $("pack_buy").value=""; $("pack_sell").value="";
+  renderPacks();
+}
+function delPack(id){ tempPacks=tempPacks.filter(p=>p.id!==id); renderPacks(); }
+function editPack(id){
+  const pk=tempPacks.find(p=>p.id===id); if(!pk) return;
+  $("pack_size").value=pk.size;
+  $("pack_buy").value=pk.buy;
+  $("pack_sell").value=pk.sell;
+  tempPacks=tempPacks.filter(p=>p.id!==id);
+  renderPacks();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderPacks(){
+  const tb=$("packs_list");
+  tb.innerHTML="";
+  if(!tempPacks.length){
+    tb.innerHTML=`<tr><td colspan="4" class="small">Aucun emballage ajouté.</td></tr>`;
+    return;
+  }
+  const unit=$("p_unite").value||"";
+  tempPacks.forEach(pk=>{
+    tb.innerHTML += `<tr>
+      <td><b>${num(pk.size)}</b> ${esc(unit)}</td>
+      <td>${money(pk.buy)}</td>
+      <td>${money(pk.sell)}</td>
+      <td class="actions">
+        <button class="btn ghost" data-edit="${pk.id}">✏</button>
+        <button class="btn danger" data-del="${pk.id}">🗑</button>
+      </td>
+    </tr>`;
+  });
+  tb.querySelectorAll("button[data-del]").forEach(b=>b.onclick=()=>delPack(b.dataset.del));
+  tb.querySelectorAll("button[data-edit]").forEach(b=>b.onclick=()=>editPack(b.dataset.edit));
+}
+
+function saveProduit(){
+  const marque=$("p_marque").value.trim();
+  const nom=$("p_nom").value.trim();
+  const type=$("p_type").value;
+  const unite=$("p_unite").value;
+  const rendement=parseFloat($("p_rendement").value);
+  const rendU = ($("p_rend_unite").value || unite);
+  const density = $("p_density").value ? parseFloat($("p_density").value) : null;
+  const pertes = $("p_pertes").value ? parseFloat($("p_pertes").value) : null;
+
+  if(!marque||!nom||!type||!unite||!(rendement>0)) return alert("Remplis Marque, Nom, Type, Unité produit et Rendement.");
+  if(rendU!==unite && !(density>0)) return alert("Densité obligatoire car unité rendement ≠ unité produit.");
+
+  const packs=tempPacks.map(x=>({id:x.id||uid("pk"), size:Number(x.size), buy:Number(x.buy), sell:Number(x.sell)})).filter(x=>x.size>0 && x.buy>=0);
+  if(packs.length===0) return alert("Ajoute au moins 1 emballage (format + achat).");
+
+  const p={ id: editProdId || uid("prod"), marque, nom, type, unite, rendement, rendementUnit:rendU, density, pertes, packs };
+  const i=produits.findIndex(x=>x.id===p.id);
+  if(i>=0) produits[i]=p; else produits.push(p);
+  persist();
+  resetProdForm();
+  refreshBrandFilter();
+  renderProduits();
+  refreshStepProducts();
+  refreshCalculSelects();
+  alert("Produit enregistré ✅");
+}
+
+function editProduit(id){
+  const p=produits.find(x=>x.id===id); if(!p) return;
+  editProdId=p.id;
+  $("p_marque").value=p.marque||"";
+  $("p_nom").value=p.nom||"";
+  $("p_type").value=p.type||"";
+  $("p_unite").value=p.unite||"";
+  $("p_rendement").value=p.rendement||"";
+  $("p_rend_unite").value=(p.rendementUnit && p.rendementUnit!==p.unite)?p.rendementUnit:"";
+  $("p_density").value=p.density??"";
+  $("p_pertes").value=(p.pertes!=null)?p.pertes:"";
+  tempPacks=(p.packs||[]).map(pk=>({id:pk.id||uid("pk"), size:Number(pk.size), buy:Number(pk.buy??pk.price??0), sell:Number(pk.sell??pk.buy??pk.price??0)}));
+  renderPacks();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteProduit(id){
+  const used = systemes.some(s => (s.steps||[]).some(st=>st.prodId===id));
+  if(used) return alert("Produit utilisé dans un système. Modifie/supprime le système d’abord.");
+  if(!confirm("Supprimer ce produit ?")) return;
+  produits=produits.filter(x=>x.id!==id);
+  persist();
+  refreshBrandFilter();
+  renderProduits();
+  refreshStepProducts();
+  refreshCalculSelects();
+}
+
+function refreshBrandFilter(){
+  const sel=$("p_brandFilter");
+  if(!sel) return;
+  const cur=sel.value||"";
+  const brands=[...new Set(produits.map(p=>String(p.marque||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = `<option value="">Toutes</option>` + brands.map(b=>`<option ${b===cur?"selected":""}>${esc(b)}</option>`).join("");
+}
+
+function renderProduits(){
+  const q=($("p_search").value||"").trim().toLowerCase();
+  const typeF=$("p_typeFilter").value||"";
+  const brandF=$("p_brandFilter").value||"";
+  const tb=$("p_liste");
+  tb.innerHTML="";
+  let list=produits.slice();
+  if(q) list=list.filter(p=>(`${p.marque} ${p.nom}`).toLowerCase().includes(q));
+  if(typeF) list=list.filter(p=>p.type===typeF);
+  if(brandF) list=list.filter(p=>p.marque===brandF);
+
+  if(!list.length){
+    tb.innerHTML=`<tr><td colspan="5" class="small">Aucun produit.</td></tr>`;
+    return;
+  }
+  list.sort((a,b)=>(a.marque+a.nom).localeCompare(b.marque+b.nom)).forEach(p=>{
+    const packsTxt=(p.packs||[]).map(pk=>`${pk.size}${p.unite}`).join(" / ") || "—";
+    const rendTxt = `${num(p.rendement)} m²/${esc(p.rendementUnit||p.unite)}`;
+    tb.innerHTML += `<tr>
+      <td><b>${esc(p.marque)} – ${esc(p.nom)}</b><div class="small"><span class="badge">${esc(p.type)}</span></div></td>
+      <td>${esc(p.type)}</td>
+      <td>${rendTxt}${(p.rendementUnit&&p.rendementUnit!==p.unite)?`<div class="small">densité ${esc(p.density)} kg/L</div>`:""}</td>
+      <td>${esc(packsTxt)}</td>
+      <td class="actions">
+        <button class="btn ghost" data-act="editProd" data-id="${p.id}">✏</button>
+        <button class="btn danger" data-act="delProd" data-id="${p.id}">🗑</button>
+      </td>
+    </tr>`;
+  });
+  tb.querySelectorAll('button[data-act="editProd"]').forEach(b=>b.onclick=()=>editProduit(b.dataset.id));
+  tb.querySelectorAll('button[data-act="delProd"]').forEach(b=>b.onclick=()=>deleteProduit(b.dataset.id));
+}
+
+/* =======================
+   SYSTEMES
+======================= */
+function resetSystemForm(){
+  editSysId=null; tempSteps=[];
+  $("s_nom").value=""; $("s_support").value=""; $("s_pertes").value=""; $("s_desc").value=""; $("s_type").value="";
+  $("step_prod").value=""; $("step_couches").value=1; $("step_mo").value=""; $("step_search").value="";
+  renderSteps();
+}
+
+function refreshStepProducts(){
+  const sel=$("step_prod");
+  if(!sel) return;
+  const q=($("step_search").value||"").trim().toLowerCase();
+  let list=produits.slice().sort((a,b)=>(a.marque+a.nom).localeCompare(b.marque+b.nom));
+  if(q) list=list.filter(p=>(`${p.marque} ${p.nom} ${p.type}`).toLowerCase().includes(q));
+  sel.innerHTML="";
+  if(!list.length){
+    sel.innerHTML=`<option value="">(Ajoute des produits d’abord)</option>`;
+    return;
+  }
+  sel.innerHTML=`<option value="">Choisir…</option>` + list.map(p=>`<option value="${p.id}">${esc(p.marque)} – ${esc(p.nom)} (${esc(p.type)})</option>`).join("");
+}
+
+function addStep(){
+  const prodId=$("step_prod").value;
+  const couches=parseInt($("step_couches").value||"1",10);
+  const mo=parseFloat($("step_mo").value||"0");
+  if(!prodId) return alert("Choisis un produit.");
+  if(!(couches>=1)) return alert("Couches invalides.");
+  tempSteps.push({id:uid("st"), prodId, couches, moRate:(isFinite(mo)&&mo>=0)?mo:0});
+  renderSteps();
+  $("step_prod").value=""; $("step_couches").value=1; $("step_mo").value="";
+}
+
+function moveStep(i,dir){
+  const j=i+dir; if(j<0||j>=tempSteps.length) return;
+  const t=tempSteps[i]; tempSteps[i]=tempSteps[j]; tempSteps[j]=t; renderSteps();
+}
+
+function renderSteps(){
+  const tb=$("steps_list");
+  tb.innerHTML="";
+  if(!tempSteps.length){
+    tb.innerHTML=`<tr><td colspan="4" class="small">Aucune étape.</td></tr>`;
+    return;
+  }
+  tempSteps.forEach((st,idx)=>{
+    const p=produits.find(x=>x.id===st.prodId);
+    tb.innerHTML += `<tr>
+      <td><b>${esc(p? (p.marque+" – "+p.nom) : "Produit ?")}</b><div class="small">${esc(p?.type||"—")}</div></td>
+      <td>${st.couches}</td>
+      <td><input data-idx="${idx}" data-act="mo" type="number" step="0.01" value="${Number(st.moRate||0)}"></td>
+      <td class="actions">
+        <button class="btn ghost" data-act="up" data-idx="${idx}">⬆</button>
+        <button class="btn ghost" data-act="down" data-idx="${idx}">⬇</button>
+        <button class="btn danger" data-act="del" data-idx="${idx}">🗑</button>
+      </td>
+    </tr>`;
+  });
+
+  tb.querySelectorAll('input[data-act="mo"]').forEach(inp=>{
+    inp.oninput=()=>{
+      const i=parseInt(inp.dataset.idx,10);
+      const v=parseFloat(inp.value);
+      tempSteps[i].moRate=(isFinite(v)&&v>=0)?v:0;
+    };
+  });
+  tb.querySelectorAll('button[data-act="up"]').forEach(b=>b.onclick=()=>moveStep(parseInt(b.dataset.idx,10),-1));
+  tb.querySelectorAll('button[data-act="down"]').forEach(b=>b.onclick=()=>moveStep(parseInt(b.dataset.idx,10),+1));
+  tb.querySelectorAll('button[data-act="del"]').forEach(b=>b.onclick=()=>{ tempSteps.splice(parseInt(b.dataset.idx,10),1); renderSteps(); });
+}
+
+function saveSysteme(){
+  const nom=$("s_nom").value.trim();
+  if(!nom) return alert("Nom obligatoire.");
+  if(!tempSteps.length) return alert("Ajoute au moins 1 étape.");
+  const missing=tempSteps.some(st=>!produits.find(p=>p.id===st.prodId));
+  if(missing) return alert("Une étape a un produit introuvable.");
+
+  const sys={
+    id: editSysId || uid("sys"),
+    nom,
+    support:$("s_support").value||"",
+    sysType:$("s_type").value||"",
+    pertes: $("s_pertes").value ? parseFloat($("s_pertes").value) : null,
+    desc:$("s_desc").value.trim(),
+    steps: tempSteps.map(st=>({prodId:st.prodId,couches:st.couches,moRate:Number(st.moRate||0)})),
+    updatedAt: Date.now()
+  };
+  const i=systemes.findIndex(x=>x.id===sys.id);
+  if(i>=0) systemes[i]=sys; else systemes.push(sys);
+  persist();
+  resetSystemForm();
+  renderSystemes();
+  refreshCalculSelects();
+  alert("Système enregistré ✅");
+}
+
+function editSysteme(id){
+  const s=systemes.find(x=>x.id===id); if(!s) return;
+  editSysId=s.id;
+  $("s_nom").value=s.nom||"";
+  $("s_support").value=s.support||"";
+  $("s_type").value=s.sysType||"";
+  $("s_pertes").value=(s.pertes!=null)?s.pertes:"";
+  $("s_desc").value=s.desc||"";
+  tempSteps=(s.steps||[]).map(st=>({id:uid("st"), prodId:st.prodId, couches:st.couches||1, moRate:Number(st.moRate||0)}));
+  renderSteps();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteSysteme(id){
+  if(!confirm("Supprimer ce système ?")) return;
+  systemes=systemes.filter(x=>x.id!==id);
+  persist();
+  renderSystemes();
+  refreshCalculSelects();
+}
+
+function renderSystemes(){
+  const q=($("s_search").value||"").trim().toLowerCase();
+  const supF=$("s_supportFilter").value||"";
+  const typeF=$("s_typeFilter").value||"";
+  const tb=$("s_liste");
+  tb.innerHTML="";
+  let list=systemes.slice();
+  if(q) list=list.filter(s=>(`${s.nom} ${s.support} ${s.sysType}`).toLowerCase().includes(q));
+  if(supF) list=list.filter(s=>s.support===supF);
+  if(typeF) list=list.filter(s=>String(s.sysType||"")===typeF);
+
+  if(!list.length){
+    tb.innerHTML=`<tr><td colspan="4" class="small">Aucun système.</td></tr>`;
+    return;
+  }
+  list.sort((a,b)=>(a.nom||"").localeCompare(b.nom||"")).forEach(s=>{
+    const stepsTxt=(s.steps||[]).map(st=>{
+      const p=produits.find(x=>x.id===st.prodId);
+      return `${st.couches}× ${(p? p.nom : "Produit ?")} (MO ${num(st.moRate)})`;
+    }).join(" • ");
+    tb.innerHTML += `<tr>
+      <td><b>${esc(s.nom)}</b><div class="small">${esc(s.desc||"")}</div><div class="small">${s.sysType?`Type: ${esc(s.sysType)}`:""}</div></td>
+      <td>${esc(s.support||"—")}</td>
+      <td><span class="badge">${(s.steps||[]).length} étape(s)</span><div class="small">${esc(stepsTxt)}</div></td>
+      <td class="actions">
+        <button class="btn ghost" data-act="editSys" data-id="${s.id}">✏</button>
+        <button class="btn danger" data-act="delSys" data-id="${s.id}">🗑</button>
+      </td>
+    </tr>`;
+  });
+  tb.querySelectorAll('button[data-act="editSys"]').forEach(b=>b.onclick=()=>editSysteme(b.dataset.id));
+  tb.querySelectorAll('button[data-act="delSys"]').forEach(b=>b.onclick=()=>deleteSysteme(b.dataset.id));
+}
+
+/* =======================
+   CALCUL
+======================= */
+function refreshCalculSelects(){
+  const sel=$("c_systeme");
+  sel.innerHTML="";
+  if(!systemes.length){
+    sel.innerHTML=`<option value="">(Crée un système d’abord)</option>`;
+    return;
+  }
+  sel.innerHTML=`<option value="">Choisir…</option>` + systemes.slice().sort((a,b)=>(a.nom||"").localeCompare(b.nom||""))
+    .map(s=>`<option value="${s.id}">${esc(s.nom)}</option>`).join("");
+}
+
+function getCalcType(){ return ($("c_type").value || "four_pose"); }
+function setCalcType(t){
+  $("c_type").value = (t==="four") ? "four" : "four_pose";
+  const pose=$("btnTypePose"), four=$("btnTypeFour");
+  if($("c_type").value==="four"){
+    four.classList.remove("ghost"); four.classList.add("primary");
+    pose.classList.remove("primary"); pose.classList.add("ghost");
+    $("moBlock").style.display="none";
+  } else {
+    pose.classList.remove("ghost"); pose.classList.add("primary");
+    four.classList.remove("primary"); four.classList.add("ghost");
+    $("moBlock").style.display="block";
+  }
+}
+
+function convertQty(q, fromU, toU, density){
+  if(fromU===toU) return {q, ok:true};
+  const d = parseFloat(density);
+  if(!(d>0)) return {q:NaN, ok:false};
+  if(fromU==="L" && toU==="kg") return {q:q*d, ok:true};
+  if(fromU==="kg" && toU==="L") return {q:q/d, ok:true};
+  return {q:NaN, ok:false};
+}
+
+function bestPackCombo(q, packs, mode){
+  // packs: [{size,buy}]
+  const ps = (packs||[]).filter(p=>p.size>0 && p.buy>=0).slice().sort((a,b)=>b.size-a.size);
+  if(!ps.length) return null;
+  const P = ps.slice(0,4);
+  const A=P[0], B=P[1]||null, C=P[2]||null, D=P[3]||null;
+  let best=null;
+  const maxA = Math.ceil(q/A.size)+2;
+  for(let a=0;a<=maxA;a++){
+    const qA=a*A.size;
+    const rem1=Math.max(0,q-qA);
+    const maxB = B?(Math.ceil(rem1/B.size)+2):0;
+    for(let b=0;b<=maxB;b++){
+      const qB=B?b*B.size:0;
+      const rem2=Math.max(0,q-(qA+qB));
+      const maxC = C?(Math.ceil(rem2/C.size)+2):0;
+      for(let c=0;c<=maxC;c++){
+        const qC=C?c*C.size:0;
+        const rem3=Math.max(0,q-(qA+qB+qC));
+        let d=0,qD=0;
+        if(D){ d=Math.ceil(rem3/D.size); qD=d*D.size; }
+        const total=qA+qB+qC+qD;
+        if(total<q) continue;
+
+        const packCount=a+b+c+d;
+        const cost=a*A.buy+(B?b*B.buy:0)+(C?c*C.buy:0)+(D?d*D.buy:0);
+
+        let score;
+        if(mode==="min_cost") score=cost;
+        else if(mode==="prefer_large"){
+          const penalty=(B?b*(A.size/B.size):0)+(C?c*(A.size/C.size):0)+(D?d*(A.size/D.size):0);
+          score=penalty*1e6+cost;
+        } else score=packCount*1e6+cost;
+
+        if(!best || score<best.score || (score===best.score && total<best.total)){
+          best={a,b,c,d,total,cost,packCount,score,P};
+        }
+      }
+    }
+  }
+  if(!best) return null;
+  const counts=[];
+  const [p0,p1,p2,p3]=best.P;
+  if(best.a) counts.push([p0,best.a]);
+  if(p1 && best.b) counts.push([p1,best.b]);
+  if(p2 && best.c) counts.push([p2,best.c]);
+  if(p3 && best.d) counts.push([p3,best.d]);
+  return {counts, qty:best.total, cost:best.cost, packCount:best.packCount};
+}
+
+function computeDevis(){
+  const sysId=$("c_systeme").value;
+  const surface=parseFloat($("c_surface").value);
+  $("c_details").innerHTML="";
+  $("calc_note").textContent="";
+  $("k_matiere").textContent="—"; $("k_mo").textContent="—"; $("k_ttc").textContent="—"; $("k_m2").textContent="—";
+  lastCalc=null;
+
+  if(!sysId) return $("c_details").innerHTML=`<tr><td colspan="7" class="small">Choisis un système.</td></tr>`;
+  if(!(surface>0)) return $("c_details").innerHTML=`<tr><td colspan="7" class="small">Entre une surface > 0.</td></tr>`;
+
+  const sys=systemes.find(s=>s.id===sysId); if(!sys) return;
+  const pertesSys = (sys.pertes!=null && isFinite(sys.pertes)) ? Number(sys.pertes) : 0;
+  const pertesCh = pct($("c_pertes").value);
+  const marge = pct($("c_marge").value);
+  const tva = pct($("c_tva").value);
+  const arrondi = $("c_arrondi").checked;
+  const packMode = $("c_pack_mode").value || "least_packs";
+  const moMode = $("c_mo_mode").value || "global";
+  const moGlobal = parseFloat($("c_mo").value);
+  const useStepsMO = (moMode==="etapes");
+
+  let totalMatiere=0;
+  let totalMO=0;
+  const warnings=[];
+  const rows=[];
+
+  (sys.steps||[]).forEach(st=>{
+    const p=produits.find(x=>x.id===st.prodId);
+    if(!p) return;
+    const couches = Number(st.couches||1);
+    const pertesProd = (p.pertes!=null && isFinite(p.pertes)) ? Number(p.pertes) : 0;
+    const pertesTot = pertesSys + pertesProd + pertesCh;
+
+    const rendement = Number(p.rendement||0);
+    const rendU = p.rendementUnit || p.unite;
+    const qBrute = (surface*couches)/rendement;
+    const qRend = qBrute * (1+pertesTot/100);
+
+    const conv = convertQty(qRend, rendU, p.unite, p.density);
+    if(!conv.ok && rendU!==p.unite) warnings.push(`Densité manquante: ${p.marque} – ${p.nom}`);
+    const qFinal = conv.q;
+
+    let qLivree=qFinal;
+    let cout=0;
+    let packTxt="—";
+
+    const packs = (p.packs||[]).map(pk=>({id:pk.id,size:Number(pk.size),buy:Number(pk.buy??pk.price??0),sell:Number(pk.sell??pk.buy??pk.price??0)})).filter(pk=>pk.size>0 && pk.buy>=0);
+
+    if(arrondi && packs.length){
+      const best = bestPackCombo(qFinal, packs, packMode);
+      if(best){
+        qLivree=best.qty; cout=best.cost;
+        packTxt = best.counts.map(([pk,n])=>`${n}×${pk.size}${p.unite}`).join(" + ") || "—";
+      } else {
+        const big = packs.slice().sort((a,b)=>b.size-a.size)[0];
+        const nb=ceil(qFinal/big.size);
+        qLivree=nb*big.size; cout=nb*big.buy; packTxt=`${nb}×${big.size}${p.unite}`;
+      }
+    } else {
+      const bestPU = packs.length ? Math.min(...packs.map(pk=>pk.buy/pk.size)) : 0;
+      cout = qFinal * bestPU;
+    }
+
+    totalMatiere += (isFinite(cout)?cout:0);
+
+    rows.push({p, couches, rendement, rendU, pertesTot, qLivree, packTxt, cout});
+  });
+
+  const calcType=getCalcType();
+  if(calcType==="four"){
+    totalMO = 0;
+  } else {
+    if(useStepsMO){
+      const rate = (sys.steps||[]).reduce((a,st)=>a + (isFinite(st.moRate)?Number(st.moRate):0),0);
+      totalMO = surface * rate;
+    } else {
+      totalMO = (isFinite(moGlobal)&&moGlobal>0) ? surface*moGlobal : 0;
+    }
+  }
+
+  const base = totalMatiere + totalMO;
+  const totalHT = base*(1+marge/100);
+  const totalTTC = totalHT*(1+tva/100);
+  const prixM2 = totalTTC/surface;
+
+  // marge commerciale (prix vente - coût achat) => basé sur vente HT (totalHT) et base cost
+  const profitDH = totalHT - base;
+  const profitPct = base>0 ? (profitDH/base*100) : 0;
+
+  $("k_matiere").textContent = money(totalMatiere);
+  $("k_mo").textContent = money(totalMO);
+  $("k_ttc").textContent = money(totalTTC);
+  $("k_m2").textContent = num(prixM2) + " DH/m²";
+
+  const tb=$("c_details");
+  tb.innerHTML="";
+  if(!rows.length){
+    tb.innerHTML=`<tr><td colspan="7" class="small">Ce système ne contient aucune étape.</td></tr>`;
+  } else {
+    rows.forEach(r=>{
+      tb.innerHTML += `<tr>
+        <td><b>${esc(r.p.marque)} – ${esc(r.p.nom)}</b><div class="small"><span class="badge">${esc(r.p.type)}</span> · unité ${esc(r.p.unite)}</div></td>
+        <td>${r.couches}</td>
+        <td>${num(r.rendement)} m²/${esc(r.rendU)}</td>
+        <td>${num(r.pertesTot)}%</td>
+        <td>${num(r.qLivree)} ${esc(r.p.unite)}</td>
+        <td>${esc(r.packTxt)}</td>
+        <td>${money(r.cout)}</td>
+      </tr>`;
+    });
+  }
+
+  $("calc_note").textContent =
+    `Pertes totales = pertes système (${num(pertesSys)}%) + pertes produit + pertes chantier (${num(pertesCh)}%).` +
+    (warnings.length?`\n⚠ ${warnings.join(" | ")}`:"");
+
+  lastCalc = {
+    id: uid("hist"),
+    ts: Date.now(),
+    calcType:getCalcType(),
+    projet: $("c_projet").value.trim(),
+    client: $("c_client").value.trim(),
+    sysId: sys.id,
+    sysNom: sys.nom,
+    support: sys.support||"",
+    surface,
+    packMode, moMode,
+    marge, tva, arrondi,
+    totals:{ totalMatiere, totalMO, baseCost:base, totalHT, totalTTC, prixM2, profitDH, profitPct },
+    rows: rows.map(r=>({
+      marque:r.p.marque, nom:r.p.nom, type:r.p.type, unite:r.p.unite,
+      couches:r.couches, rendement:r.rendement, rendU:r.rendU,
+      pertesTot:r.pertesTot, qLivree:r.qLivree, packTxt:r.packTxt, cout:r.cout
+    })),
+    status: "en_cours"
+  };
+}
+
+function saveHistory(){
+  if(!lastCalc) return alert("Fais un calcul d’abord.");
+  devisHistory.unshift({...lastCalc, id: uid("hist"), ts: Date.now(), status: lastCalc.status || "en_cours"});
+  persist();
+  alert("Enregistré ✅");
+  renderStats();
+  renderMarges();
+}
+
+/* =======================
+   STATS / HIST
+======================= */
+function setHistoryStatus(id,status){
+  const h=devisHistory.find(x=>x.id===id); if(!h) return;
+  h.status=status||"en_cours";
+  persist();
+}
+function exportHistoryCSV(){
+  const lines=[];
+  lines.push(["Date","Projet","Client","Système","Surface","Statut","TotalTTC","PrixM2"].join(";"));
+  devisHistory.forEach(h=>{
+    lines.push([fmtDate(h.ts),h.projet||"",h.client||"",h.sysNom||"",num(h.surface),h.status||"en_cours",num(h.totals?.totalTTC||0),num(h.totals?.prixM2||0)].join(";"));
+  });
+  downloadBlob("\uFEFF"+lines.join("\n"), "text/csv;charset=utf-8", "paintapppro_historique_"+new Date().toISOString().slice(0,10)+".csv");
+}
+function clearHistory(){
+  if(!confirm("Vider historique ?")) return;
+  devisHistory=[]; devisHistory=devisHistory;
+  persist();
+  renderStats();
+  renderMarges();
+}
+function renderStats(){
+  const period=$("st_period").value;
+  const status=$("st_status").value;
+  const now=Date.now();
+  let list=devisHistory.slice();
+
+  if(period!=="all"){
+    const days=parseInt(period,10);
+    const minTs=now - days*24*3600*1000;
+    list=list.filter(h=>(h.ts||0)>=minTs);
+  }
+  if(status) list=list.filter(h=>(h.status||"en_cours")===status);
+
+  const count=list.length;
+  const sumTTC=list.reduce((a,h)=>a+Number(h.totals?.totalTTC||0),0);
+  const valide=list.filter(h=>(h.status||"en_cours")==="valide").length;
+  const facture=list.filter(h=>(h.status||"en_cours")==="facture").length;
+
+  $("st_k_count").textContent=String(count);
+  $("st_k_ttc").textContent=money(sumTTC);
+  $("st_k_valide").textContent=String(valide);
+  $("st_k_facture").textContent=String(facture);
+
+  const statuses=["en_cours","valide","annule","facture"];
+  const label={en_cours:"En cours",valide:"Validé",annule:"Annulé",facture:"Facturé"};
+  $("st_by_status").innerHTML="";
+  statuses.forEach(s=>{
+    const items=list.filter(h=>(h.status||"en_cours")===s);
+    const n=items.length;
+    const t=items.reduce((a,h)=>a+Number(h.totals?.totalTTC||0),0);
+    $("st_by_status").innerHTML += `<tr><td>${label[s]}</td><td>${n}</td><td>${money(t)}</td></tr>`;
+  });
+
+  const tb=$("st_list");
+  tb.innerHTML="";
+  if(!list.length){
+    tb.innerHTML=`<tr><td colspan="4" class="small">Aucune donnée.</td></tr>`;
+    return;
+  }
+  list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const opts=(cur)=>`
+    <option value="en_cours" ${cur==="en_cours"?"selected":""}>En cours</option>
+    <option value="valide" ${cur==="valide"?"selected":""}>Validé</option>
+    <option value="annule" ${cur==="annule"?"selected":""}>Annulé</option>
+    <option value="facture" ${cur==="facture"?"selected":""}>Facturé</option>
+  `;
+  list.forEach(h=>{
+    tb.innerHTML += `<tr>
+      <td><b>${esc(h.projet||"—")}</b><div class="small">${esc(fmtDate(h.ts))} · ${esc(h.client||"—")} · ${esc(h.sysNom||"—")}</div></td>
+      <td><select data-act="stSel" data-id="${h.id}">${opts(h.status||"en_cours")}</select></td>
+      <td style="text-align:right"><b>${num(h.totals?.totalTTC||0)}</b> DH<div class="small">${num(h.totals?.prixM2||0)} DH/m²</div></td>
+      <td class="actions">
+        <button class="btn ghost" data-act="openHist" data-id="${h.id}">Ouvrir</button>
+        <button class="btn ghost" data-act="setVal" data-id="${h.id}">✔</button>
+        <button class="btn ghost" data-act="setFac" data-id="${h.id}">🧾</button>
+        <button class="btn ghost" data-act="setAnn" data-id="${h.id}">✖</button>
+      </td>
+    </tr>`;
+  });
+
+  tb.querySelectorAll('select[data-act="stSel"]').forEach(sel=>{
+    sel.onchange=()=>{ setHistoryStatus(sel.dataset.id, sel.value); renderStats(); renderMarges(); };
+  });
+  tb.querySelectorAll('button[data-act="openHist"]').forEach(b=>b.onclick=()=>openHistory(b.dataset.id));
+  tb.querySelectorAll('button[data-act="setVal"]').forEach(b=>b.onclick=()=>{ setHistoryStatus(b.dataset.id,"valide"); renderStats(); renderMarges(); });
+  tb.querySelectorAll('button[data-act="setFac"]').forEach(b=>b.onclick=()=>{ setHistoryStatus(b.dataset.id,"facture"); renderStats(); renderMarges(); });
+  tb.querySelectorAll('button[data-act="setAnn"]').forEach(b=>b.onclick=()=>{ setHistoryStatus(b.dataset.id,"annule"); renderStats(); renderMarges(); });
+}
+
+function openHistory(id){
+  const h=devisHistory.find(x=>x.id===id); if(!h) return;
+  lastCalc = {...h};
+  $("c_systeme").value = h.sysId || "";
+  $("c_surface").value = h.surface || "";
+  $("c_projet").value = h.projet || "";
+  $("c_client").value = h.client || "";
+  $("c_mo_mode").value = h.moMode || "global";
+  $("c_pack_mode").value = h.packMode || "least_packs";
+  $("c_marge").value = h.marge || "";
+  $("c_tva").value = h.tva || "";
+  $("c_arrondi").checked = !!h.arrondi;
+  setCalcType(h.calcType==="four"?"four":"four_pose");
+
+  $("k_matiere").textContent = money(h.totals?.totalMatiere||0);
+  $("k_mo").textContent = money(h.totals?.totalMO||0);
+  $("k_ttc").textContent = money(h.totals?.totalTTC||0);
+  $("k_m2").textContent = num(h.totals?.prixM2||0) + " DH/m²";
+  $("c_details").innerHTML = (h.rows||[]).map(r=>`
+    <tr>
+      <td><b>${esc(r.marque)} – ${esc(r.nom)}</b><div class="small"><span class="badge">${esc(r.type)}</span> · unité ${esc(r.unite)}</div></td>
+      <td>${r.couches}</td>
+      <td>${num(r.rendement)} m²/${esc(r.rendU||r.unite)}</td>
+      <td>${num(r.pertesTot)}%</td>
+      <td>${num(r.qLivree)} ${esc(r.unite)}</td>
+      <td>${esc(r.packTxt||"—")}</td>
+      <td>${money(r.cout)}</td>
+    </tr>`).join("");
+  $("calc_note").textContent = "Historique chargé ✅";
+  setView("calcul");
+}
+
+/* =======================
+   PDF
+======================= */
+function openPdfWindow(htmlContent){
+  const w = window.open("", "_blank");
+  if(!w){ alert("Popup bloquée. Autorise les popups pour l’export PDF (ou essaie Chrome)."); return null; }
+  w.document.open();
+  w.document.write(htmlContent);
+  w.document.close();
+  return w;
+}
+
+function buildPDFHtml(h, hideInternal){
+  const c = company || {};
+  const headerLines = [
+    c.phone?`<div style="font-size:12px;color:#374151">Tél : ${esc(c.phone)}</div>`:"",
+    c.email?`<div style="font-size:12px;color:#374151">Email : ${esc(c.email)}</div>`:"",
+    c.ice?`<div style="font-size:12px;color:#374151">ICE : ${esc(c.ice)}</div>`:"",
+    c.address?`<div style="font-size:12px;color:#374151;white-space:pre-wrap">${esc(c.address)}</div>`:""
+  ].filter(Boolean).join("");
+
+  const rows = (h.rows||[]).map(r=>`
+    <tr>
+      <td><b>${esc(r.marque)} – ${esc(r.nom)}</b><br><small>${esc(r.type)} · unité ${esc(r.unite)}</small></td>
+      <td style="text-align:center">${r.couches}</td>
+      <td style="text-align:center">${num(r.rendement)}<br><small>m²/${esc(r.rendU||r.unite)}</small></td>
+      <td style="text-align:center">${num(r.pertesTot)}%</td>
+      <td style="text-align:right">${num(r.qLivree)} ${esc(r.unite)}</td>
+      <td style="text-align:center">${esc(r.packTxt||"—")}</td>
+      <td style="text-align:right">${money(r.cout)}</td>
+    </tr>`).join("");
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Devis PaintAppPro</title>
+  <style>
+  body{font-family:Arial,Helvetica,sans-serif;margin:26px;color:#111;padding-bottom:35mm}
+  .top{display:flex;justify-content:space-between;gap:14px}
+  .brand{font-size:18px;font-weight:800}
+  .muted{color:#555;font-size:12px}
+  h1{font-size:16px;margin:14px 0 8px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border:1px solid #ddd;padding:8px;font-size:12px;vertical-align:top}
+  th{background:#f2f2f2;text-align:left}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+  .box{border:1px solid #ddd;border-radius:10px;padding:10px}
+  .t{font-size:11px;color:#555;font-weight:700}
+  .v{font-size:14px;font-weight:800;margin-top:2px}
+  .signature{display:flex;justify-content:space-between;gap:14px;margin-top:22px}
+  .sigbox{flex:1;border:1px solid #ddd;border-radius:10px;padding:12px;font-size:12px;min-height:70px}
+  .footer{margin-top:18px;font-size:11px;color:#374151;border-top:1px solid #e5e7eb;padding-top:8px;display:flex;justify-content:space-between;position:fixed;left:20mm;right:20mm;bottom:10mm}
+  @page{ margin:20mm; }
+  @media print{ .pagenum:after{ content:"Page " counter(page); } .no-print{display:none} body{margin:0} }
+  </style></head><body>
+  <div class="top">
+    <div>
+      ${c.logoDataUrl?`<img src="${c.logoDataUrl}" alt="logo" style="max-height:60px;max-width:220px;margin-bottom:6px">`:""}
+      <div class="brand">${esc(c.name||"Votre société")}</div>
+      ${headerLines}
+    </div>
+    <div style="text-align:right">
+      <div class="muted">Date : ${esc(fmtDate(h.ts))}</div>
+      <div style="margin-top:6px;font-size:12px"><b>Projet :</b> ${esc(h.projet||"—")}</div>
+      <div style="font-size:12px"><b>Client :</b> ${esc(h.client||"—")}</div>
+    </div>
+  </div>
+
+  <h1>Récapitulatif</h1>
+  <div style="font-size:12px">
+    <div><b>Type :</b> ${esc(h.calcType==="four" ? "Fourniture seule" : "Fourniture + pose")}</div>
+    <div><b>Système :</b> ${esc(h.sysNom||"—")}</div>
+    <div><b>Surface :</b> ${num(h.surface||0)} m²</div>
+    ${hideInternal ? "" : `<div><b>Marge :</b> ${num(h.marge||0)}% · <b>TVA :</b> ${num(h.tva||0)}%</div>`}
+  </div>
+
+  <div class="kpi">
+    <div class="box"><div class="t">Coût matière</div><div class="v">${num(h.totals?.totalMatiere||0)} DH</div></div>
+    ${(h.calcType==="four") ? "" : '<div class="box"><div class="t">Main d’œuvre</div><div class="v">'+num(h.totals?.totalMO||0)+' DH</div></div>'}
+    ${hideInternal ? "" : `<div class="box"><div class="t">Total HT (avec marge)</div><div class="v">${num(h.totals?.totalHT||0)} DH</div></div>`}
+    <div class="box"><div class="t">Total TTC</div><div class="v">${num(h.totals?.totalTTC||0)} DH</div></div>
+  </div>
+
+  <div style="margin-top:8px;font-size:12px"><b>Prix au m² :</b> ${num(h.totals?.prixM2||0)} DH/m²</div>
+
+  <h1>Détails produits</h1>
+  <table><thead><tr>
+    <th>Produit</th><th style="width:60px">Couches</th><th style="width:90px">Rend.</th><th style="width:70px">Pertes</th>
+    <th style="width:120px">Quantité</th><th style="width:140px">Bidons/Sacs</th><th style="width:90px">Coût</th>
+  </tr></thead><tbody>${rows}</tbody></table>
+
+  <div class="signature">
+    <div class="sigbox"><b>Signature client</b><br><span class="muted">Nom / Cachet</span></div>
+    <div class="sigbox"><b>Signature société</b><br><span class="muted">Nom / Cachet</span></div>
+  </div>
+
+  <div class="footer"><div>${esc(c.name||"")}${c.phone?(" · "+esc(c.phone)):""}${c.email?(" · "+esc(c.email)):""}</div><div class="pagenum"></div></div>
+
+  <div class="no-print" style="margin-top:14px">
+    <button onclick="window.print()" style="padding:10px 14px;font-weight:800">Imprimer / Enregistrer PDF</button>
+  </div>
+
+  </body></html>`;
+  return html;
+}
+
+function printPDFClient(){
+  if(!lastCalc) return alert("Fais un calcul d’abord.");
+  openPdfWindow(buildPDFHtml(lastCalc, true));
+}
+function printPDFInterne(){
+  if(!lastCalc) return alert("Fais un calcul d’abord.");
+  openPdfWindow(buildPDFHtml(lastCalc, false));
+}
+
+/* =======================
+   PARAMS + BACKUP/IMPORT
+======================= */
+function loadCompanyForm(){
+  $("co_name").value=company.name||"";
+  $("co_phone").value=company.phone||"";
+  $("co_email").value=company.email||"";
+  $("co_ice").value=company.ice||"";
+  $("co_address").value=company.address||"";
+  $("pdf_hide_internal").checked=!!company.pdfHideInternal;
+  const lp=$("logo_preview");
+  lp.innerHTML = company.logoDataUrl ? `<img src="${company.logoDataUrl}" alt="logo" style="max-height:60px;max-width:220px">` : "—";
+}
+function saveCompany(){
+  company.name=$("co_name").value.trim();
+  company.phone=$("co_phone").value.trim();
+  company.email=$("co_email").value.trim();
+  company.ice=$("co_ice").value.trim();
+  company.address=$("co_address").value.trim();
+  company.pdfHideInternal=!!$("pdf_hide_internal").checked;
+  persist();
+  alert("Paramètres enregistrés ✅");
+}
+function clearCompany(){
+  company={name:"",phone:"",email:"",ice:"",address:"",pdfHideInternal:true,logoDataUrl:""};
+  persist();
+  loadCompanyForm();
+}
+function doBackup(){
+  const payload={version:"paintapppro_v1.0", exportedAt:Date.now(), produits, systemes, devisHistory, company};
+  downloadBlob(JSON.stringify(payload,null,2), "application/json;charset=utf-8", "paintapppro_backup_"+new Date().toISOString().slice(0,10)+".json");
+}
+function doImport(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(String(r.result||"{}"));
+      produits = Array.isArray(data.produits)?data.produits:produits;
+      systemes = Array.isArray(data.systemes)?data.systemes:systemes;
+      devisHistory = Array.isArray(data.history)?data.history:devisHistory;
+      company  = (data.company && typeof data.company==="object") ? data.company : company;
+      // migrate old packs.price
+      produits = produits.map(p=>{
+        p.packs=(p.packs||[]).map(pk=>{
+          const price = pk.price!=null?Number(pk.price):null;
+          const buy = pk.buy!=null?Number(pk.buy):(price!=null?price:0);
+          const sell = pk.sell!=null?Number(pk.sell):(price!=null?price:buy);
+          return {id:pk.id||uid("pk"), size:Number(pk.size||0), buy, sell};
+        }).filter(x=>x.size>0);
+        return p;
+      });
+      systemes = systemes.map(s=>Object.assign({}, s, {sysType:s.sysType||""}));
+      persist();
+      resetProdForm();
+      resetSystemForm();
+      refreshBrandFilter();
+      renderProduits();
+      renderSystemes();
+      refreshStepProducts();
+      refreshCalculSelects();
+      renderStats();
+      renderMarges();
+      loadCompanyForm();
+      alert("Import OK ✅");
+    }catch(e){
+      alert("Import erreur: "+e.message);
+    }
+  };
+  r.readAsText(file,"utf-8");
+}
+
+function downloadBlob(content, mime, filename){
+  const blob=new Blob([content],{type:mime});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* =======================
+   CSV (Excel)
+======================= */
+function parseCSV(text){
+  const t=String(text||"").replace(/^\uFEFF/,"").trim();
+  return t.split(/\r?\n/).filter(Boolean).map(r=>r.split(";"));
+}
+
+function exportProduitsCSV(){
+  const lines=[];
+  lines.push(["id","marque","nom","type","unite","rendement","rendementUnit","density","pertes","packs(size|buy|sell)"].join(";"));
+  produits.forEach(p=>{
+    const packs=(p.packs||[]).map(pk=>`${pk.size}|${round2(pk.buy ?? 0)}|${round2(pk.sell ?? pk.buy ?? 0)}`).join(" || ");
+    const row=[p.id||"",p.marque||"",p.nom||"",p.type||"",p.unite||"",p.rendement||"",p.rendementUnit||"",p.density??"",p.pertes??"",packs];
+    lines.push(row.map(x=>String(x).replaceAll("\n"," ").replaceAll(";"," , ")).join(";"));
+  });
+  downloadBlob("\uFEFF"+lines.join("\n"), "text/csv;charset=utf-8", "paintapppro_produits_"+new Date().toISOString().slice(0,10)+".csv");
+}
+
+function exportSystemesCSV(){
+  const lines=[];
+  lines.push(["id","nom","support","type(INT/EXT)","pertes","desc","steps(prodId|couches|moRate)"].join(";"));
+  systemes.forEach(s=>{
+    const steps=(s.steps||[]).map(st=>`${st.prodId}|${st.couches}|${round2(st.moRate||0)}`).join(" || ");
+    const row=[s.id||"",s.nom||"",s.support||"",s.sysType||"",s.pertes??"", (s.desc||"").replaceAll("\n"," "), steps];
+    lines.push(row.map(x=>String(x).replaceAll(";"," , ")).join(";"));
+  });
+  downloadBlob("\uFEFF"+lines.join("\n"), "text/csv;charset=utf-8", "paintapppro_systemes_"+new Date().toISOString().slice(0,10)+".csv");
+}
+
+function importProduitsCSV(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const rows=parseCSV(r.result);
+      const header=rows.shift()||[];
+      const idx=n=>header.indexOf(n);
+      const iId=idx("id"), iMar=idx("marque"), iNom=idx("nom"), iType=idx("type"), iUni=idx("unite");
+      const iRen=idx("rendement"), iRenU=idx("rendementUnit"), iDen=idx("density"), iPer=idx("pertes"), iPacks=idx("packs(size|buy|sell)");
+      const imported=[];
+      rows.forEach(rw=>{
+        const packsStr=(rw[iPacks]||"").trim();
+        const packs=packsStr?packsStr.split("||").map(x=>x.trim()).filter(Boolean).map(x=>{
+          const [sz,buy,sell]=x.split("|").map(v=>v.trim());
+          return {id:uid("pk"), size:Number(sz||0), buy:Number(buy||0), sell:Number(sell||buy||0)};
+        }).filter(pk=>pk.size>0):[];
+        imported.push({
+          id:(rw[iId]||uid("prod")).trim()||uid("prod"),
+          marque:(rw[iMar]||"").trim(),
+          nom:(rw[iNom]||"").trim(),
+          type:(rw[iType]||"").trim(),
+          unite:(rw[iUni]||"").trim(),
+          rendement:Number(rw[iRen]||0),
+          rendementUnit:(rw[iRenU]||"").trim(),
+          density:(rw[iDen]||"")!==""?Number(rw[iDen]):null,
+          pertes:(rw[iPer]||"")!==""?Number(rw[iPer]):null,
+          packs
+        });
+      });
+      const map=new Map(produits.map(p=>[p.id,p]));
+      imported.forEach(p=>map.set(p.id,p));
+      produits=[...map.values()];
+      persist();
+      resetProdForm();
+      refreshBrandFilter();
+      renderProduits();
+      refreshStepProducts();
+      refreshCalculSelects();
+      alert("Import Produits CSV OK ✅");
+    }catch(e){ alert("Import Produits CSV erreur: "+e.message); }
+  };
+  r.readAsText(file,"utf-8");
+}
+
+function importSystemesCSV(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const rows=parseCSV(r.result);
+      const header=rows.shift()||[];
+      const idx=n=>header.indexOf(n);
+      const iId=idx("id"), iNom=idx("nom"), iSup=idx("support"), iType=idx("type(INT/EXT)"), iPer=idx("pertes"), iDesc=idx("desc"), iSteps=idx("steps(prodId|couches|moRate)");
+      const imported=[];
+      rows.forEach(rw=>{
+        const stepsStr=(rw[iSteps]||"").trim();
+        const steps=stepsStr?stepsStr.split("||").map(x=>x.trim()).filter(Boolean).map(x=>{
+          const [pid,c,mo]=x.split("|").map(v=>v.trim());
+          return {prodId:pid, couches:Number(c||1), moRate:Number(mo||0)};
+        }):[];
+        imported.push({
+          id:(rw[iId]||uid("sys")).trim()||uid("sys"),
+          nom:(rw[iNom]||"").trim(),
+          support:(rw[iSup]||"").trim(),
+          sysType:(rw[iType]||"").trim(),
+          pertes:(rw[iPer]||"")!==""?Number(rw[iPer]):null,
+          desc:(rw[iDesc]||"").trim(),
+          steps,
+          updatedAt:Date.now()
+        });
+      });
+      const map=new Map(systemes.map(s=>[s.id,s]));
+      imported.forEach(s=>map.set(s.id,s));
+      systemes=[...map.values()];
+      persist();
+      resetSystemForm();
+      renderSystemes();
+      refreshCalculSelects();
+      alert("Import Systèmes CSV OK ✅");
+    }catch(e){ alert("Import Systèmes CSV erreur: "+e.message); }
+  };
+  r.readAsText(file,"utf-8");
+}
+
+/* =======================
+   MARGES VIEW
+======================= */
+
+
+
+
+/* =======================
+   WIRE
+======================= */
+function wire(){
+  const on = (id, evt, fn) => {
+    const el = $(id);
+    if(el) el[evt] = fn;
+  };
+  // nav (tabs exist by construction)
+  if(tabs.produits) tabs.produits.onclick=()=>setView("produits");
+  if(tabs.systemes) tabs.systemes.onclick=()=>setView("systemes");
+  if(tabs.calcul)   tabs.calcul.onclick=()=>setView("calcul");
+  if(tabs.stats)    tabs.stats.onclick=()=>setView("stats");
+  if(tabs.params)   tabs.params.onclick=()=>setView("params");
+  if(tabs.marges)   tabs.marges.onclick=()=>setView("marges");
+
+  on("btnDiag","onclick",openDiag);
+
+  // produits
+  on("btnAddPack","onclick",addPack);
+  on("btnSaveProduit","onclick",saveProduit);
+  on("btnCancelProd","onclick",resetProdForm);
+
+  on("p_search","oninput",renderProduits);
+  on("p_typeFilter","onchange",renderProduits);
+  on("p_brandFilter","onchange",renderProduits);
+
+  // systemes
+  on("step_search","oninput",refreshStepProducts);
+  on("btnAddStep","onclick",addStep);
+  on("btnSaveSysteme","onclick",saveSysteme);
+  on("btnResetSysteme","onclick",resetSystemForm);
+
+  on("s_search","oninput",renderSystemes);
+  on("s_supportFilter","onchange",renderSystemes);
+  on("s_typeFilter","onchange",renderSystemes);
+
+  // calcul
+  on("btnCompute","onclick",computeDevis);
+  on("btnSaveHistory","onclick",saveHistory);
+  on("btnPDFClient","onclick",printPDFClient);
+  on("btnPDFInterne","onclick",printPDFInterne);
+
+  on("btnTypePose","onclick",()=>setCalcType("four_pose"));
+  on("btnTypeFour","onclick",()=>setCalcType("four"));
+  setCalcType(getCalcType ? getCalcType() : "four_pose");
+
+  // stats
+  on("st_period","onchange",renderStats);
+  on("st_status","onchange",renderStats);
+  on("btnExportHist","onclick",exportHistoryCSV);
+  on("btnClearHist","onclick",clearHistory);
+
+  // params
+  on("btnSaveCompany","onclick",saveCompany);
+  on("btnClearCompany","onclick",clearCompany);
+  on("btnBackup","onclick",doBackup);
+  on("importFile","onchange",(ev)=>{ const f=ev.target.files&&ev.target.files[0]; if(f) doImport(f); ev.target.value=""; });
+
+  // logo upload
+  on("co_logo","onchange",()=>{
+    const input=$("co_logo");
+    const f=input && input.files && input.files[0];
+    if(!f) return;
+    const rr=new FileReader();
+    rr.onload=()=>{ company.logoDataUrl=String(rr.result||""); persist(); loadCompanyForm(); alert("Logo enregistré ✅"); };
+    rr.readAsDataURL(f);
+  });
+
+  // CSV
+  on("btnExportProdCSV","onclick",exportProduitsCSV);
+  on("btnExportSysCSV","onclick",exportSystemesCSV);
+  on("importProdCSV","onchange",(ev)=>{ const f=ev.target.files&&ev.target.files[0]; if(f) importProduitsCSV(f); ev.target.value=""; });
+  on("importSysCSV","onchange",(ev)=>{ const f=ev.target.files&&ev.target.files[0]; if(f) importSystemesCSV(f); ev.target.value=""; });
+  on("btnExportHist2","onclick",exportHistoryCSV);
+  on("btnClearHist2","onclick",clearHistory);
+
+  // marges
+  on("m_search","oninput",renderMarges);
+  on("m_select","onchange",renderMarges);
+  on("m_mode","onchange",renderMarges);
+  on("m_from","onchange",renderMarges);
+  on("m_to","onchange",renderMarges);
+  on("m_sys","onchange",renderMarges);
+  on("m_client","onchange",renderMarges);
+  on("m_sel_all","onclick",()=>setMarginSelection("all"));
+  on("m_sel_none","onclick",()=>setMarginSelection("none"));
+  on("m_sel_clear","onclick",()=>setMarginSelection("clear"));
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  try{ wire(); }
+  catch(e){ alert("Erreur au démarrage: "+e.message); console.error(e); }
+});
+
+
+
+
+/* ===== Marges PRO (A) ===== */
+let margeSel = {};
+function margesFilteredList(){
+  const q = ($("m_search")?.value || "").trim().toLowerCase();
+  const from = $("m_from")?.value ? new Date($("m_from").value + "T00:00:00") : null;
+  const to = $("m_to")?.value ? new Date($("m_to").value + "T23:59:59") : null;
+  const sys = $("m_sys")?.value || "";
+  const client = $("m_client")?.value || "";
+
+  const list = (Array.isArray(devisHistory) ? devisHistory : []).slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+  return list.filter(h=>{
+    if(from && (h.ts||0) < from.getTime()) return false;
+    if(to && (h.ts||0) > to.getTime()) return false;
+    if(sys && String(h.sysId||"") !== sys) return false;
+    if(client && String(h.client||"") !== client) return false;
+    if(q){
+      const hay = ((h.projet||"")+" "+(h.client||"")+" "+(h.sysNom||"")).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function margesBuildFilters(){
+  const list = (Array.isArray(devisHistory) ? devisHistory : []);
+  const sysSel = $("m_sys");
+  const clSel = $("m_client");
+  if(!sysSel || !clSel) return;
+
+  const curSys = sysSel.value || "";
+  const curCl = clSel.value || "";
+
+  const sysMap = new Map();
+  const clSet = new Set();
+  list.forEach(h=>{
+    if(h.sysId) sysMap.set(String(h.sysId), h.sysNom || String(h.sysId));
+    if(h.client) clSet.add(String(h.client));
+  });
+
+  sysSel.innerHTML = `<option value="">Tous</option>` + [...sysMap.entries()]
+    .sort((a,b)=>String(a[1]).localeCompare(String(b[1])))
+    .map(([id,nom])=>`<option value="${esc(id)}">${esc(nom)}</option>`).join("");
+
+  clSel.innerHTML = `<option value="">Tous</option>` + [...clSet]
+    .sort((a,b)=>String(a).localeCompare(String(b)))
+    .map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+
+  if(curSys) sysSel.value = curSys;
+  if(curCl) clSel.value = curCl;
+}
+
+function calcMarginProduit(h){
+  // Base: achat (déjà dans totals.baseCost). Vente: si prix vente pack dispo et détail packs dispo.
+  const cost = Number(h?.totals?.baseCost||0);
+  let sale = 0;
+
+  // Si on a détails packs sauvegardés dans devisHistory: h.packSales = [{sale, cost}]
+  if(Array.isArray(h.packSales) && h.packSales.length){
+    sale = 0;
+    h.packSales.forEach(x=> sale += Number(x.sale||0));
+  } else {
+    // Fallback: si pas de détail vente, on considère vente=cost (marge 0) pour éviter faux résultats
+    sale = cost;
+  }
+
+  const profit = sale - cost;
+  const pct = sale>0 ? (profit/sale*100) : 0;
+  return {cost, sale, profit, pct};
+}
+
+function calcMarginCalcul(h){
+  const cost = Number(h?.totals?.baseCost||0);
+  const sale = Number(h?.totals?.totalHT||0);
+  const profit = sale - cost;
+  const pct = sale>0 ? (profit/sale*100) : 0;
+  return {cost, sale, profit, pct};
+}
+
+function calcMarginMix(h){
+  // Mix: Vente = vente produits (si dispo) + MO (si incluse dans sale HT déjà => on utilise totalHT)
+  // Ici on prend totalHT comme vente, mais coût = baseCost (achat+MO) pour refléter "pose".
+  // Si tu veux un mix différent, on l'ajuste ensuite.
+  return calcMarginCalcul(h);
+}
+
+function marginForMode(h, mode){
+  if(mode==="produit") return calcMarginProduit(h);
+  if(mode==="calcul") return calcMarginCalcul(h);
+  if(mode==="mix") return calcMarginMix(h);
+
+  const a = calcMarginProduit(h);
+  const b = calcMarginCalcul(h);
+  const c = calcMarginMix(h);
+  return {all:true, a, b, c};
+}
+
+function renderMarges(){
+  const view = $("viewMarges"); if(!view) return;
+
+  margesBuildFilters();
+
+  const mode = $("m_mode")?.value || "produit";
+  const list = margesFilteredList();
+  const rawCount = (devisHistory||[]).length;
+  const emptyNotice = $("m_emptyNotice");
+  if(emptyNotice) emptyNotice.classList.toggle("hidden", rawCount>0);
+  if(rawCount===0){
+    // No data in this file origin. User should import backup.
+    const tb=$("m_list"); if(tb) tb.innerHTML = `<tr><td colspan="7" class="small">Aucun devis à afficher. Va dans Paramètres → Import (JSON).</td></tr>`;
+    return;
+  }
+
+  // Selection
+  margeSel = margeSel || {};
+  const selectedIds = Object.keys(margeSel).filter(k=>margeSel[k]);
+
+  // If none selected -> aggregate all filtered
+  const aggList = selectedIds.length ? list.filter(h=>margeSel[h.id]) : list;
+
+  // Aggregate KPIs
+  let aggCost=0, aggSale=0, aggProfit=0;
+  if(mode!=="all"){
+    aggList.forEach(h=>{
+      const m = marginForMode(h, mode);
+      aggCost += m.cost; aggSale += m.sale; aggProfit += m.profit;
+    });
+    const aggPct = aggSale>0 ? (aggProfit/aggSale*100) : 0;
+    $("mk_count").textContent = String(aggList.length);
+    $("mk_cost").textContent = money(aggCost);
+    $("mk_sale").textContent = money(aggSale);
+    $("mk_profit").textContent = money(aggProfit);
+    $("mk_pct").textContent = num(aggPct) + " %";
+    $("m_note").textContent = selectedIds.length
+      ? `Sélection: ${selectedIds.length} devis (sur ${list.length} filtrés).`
+      : `Total: ${list.length} devis filtrés (aucune sélection).`;
+  } else {
+    // Comparatif: show totals for each mode
+    let pa=0, sa=0, ra=0, pb=0, sb=0, rb=0, pc=0, sc=0, rc=0;
+    aggList.forEach(h=>{
+      const x = marginForMode(h, "produit"); pa+=x.cost; sa+=x.sale; ra+=x.profit;
+      const y = marginForMode(h, "calcul");  pb+=y.cost; sb+=y.sale; rb+=y.profit;
+      const z = marginForMode(h, "mix");     pc+=z.cost; sc+=z.sale; rc+=z.profit;
+    });
+    const line = (name,cost,sale,profit)=>`${name}: coût ${money(cost)} · vente ${money(sale)} · marge ${money(profit)} · ${num(sale>0?profit/sale*100:0)}%`;
+    $("mk_count").textContent = String(aggList.length);
+    $("mk_cost").textContent = "—";
+    $("mk_sale").textContent = "—";
+    $("mk_profit").textContent = "—";
+    $("mk_pct").textContent = "—";
+    $("m_note").textContent =
+      line("Produit",pa,sa,ra)+" | "+line("Calcul",pb,sb,rb)+" | "+line("Mix",pc,sc,rc);
+  }
+
+  // Header table for comparatif
+  const thead = $("m_thead");
+  if(mode==="all"){
+    thead.innerHTML = `<tr>
+      <th style="width:34px"></th><th>Devis</th>
+      <th colspan="3">Produit</th>
+      <th colspan="3">Calcul</th>
+      <th colspan="3">Mix</th>
+      <th style="width:90px"></th>
+    </tr>
+    <tr>
+      <th></th><th></th>
+      <th>Coût</th><th>Vente</th><th>Marge</th>
+      <th>Coût</th><th>Vente</th><th>Marge</th>
+      <th>Coût</th><th>Vente</th><th>Marge</th>
+      <th></th>
+    </tr>`;
+  } else {
+    thead.innerHTML = `<tr>
+      <th style="width:34px"></th><th>Devis</th><th>Coût</th><th>Vente</th><th>Marge</th><th style="width:90px"></th>
+    </tr>`;
+  }
+
+  // rows
+  const tb = $("m_list"); tb.innerHTML="";
+  if(!list.length){
+    tb.innerHTML = `<tr><td colspan="${mode==='all'?12:6}" class="small">Aucun devis dans l’historique.</td></tr>`;
+  } else {
+    list.forEach(h=>{
+      const checked = !!margeSel[h.id];
+      const title = `<b>${esc(h.projet||"—")}</b><div class="small">${esc(fmtDate(h.ts))} · ${esc(h.client||"—")} · ${esc(h.sysNom||"—")} · ${num(h.surface||0)} m²</div>`;
+      if(mode==="all"){
+        const a=marginForMode(h,"produit"), b=marginForMode(h,"calcul"), c=marginForMode(h,"mix");
+        tb.innerHTML += `<tr>
+          <td><input type="checkbox" class="m_chk" data-id="${esc(h.id)}" ${checked?"checked":""}></td>
+          <td>${title}</td>
+          <td>${money(a.cost)}</td><td>${money(a.sale)}</td><td><b>${money(a.profit)}</b></td>
+          <td>${money(b.cost)}</td><td>${money(b.sale)}</td><td><b>${money(b.profit)}</b></td>
+          <td>${money(c.cost)}</td><td>${money(c.sale)}</td><td><b>${money(c.profit)}</b></td>
+          <td class="actions"><button class="btn ghost" data-open="${esc(h.id)}">Voir</button></td>
+        </tr>`;
+      } else {
+        const m = marginForMode(h, mode);
+        tb.innerHTML += `<tr>
+          <td><input type="checkbox" class="m_chk" data-id="${esc(h.id)}" ${checked?"checked":""}></td>
+          <td>${title}</td>
+          <td>${money(m.cost)}</td>
+          <td>${money(m.sale)}</td>
+          <td><b>${money(m.profit)}</b><div class="small">${num(m.pct)}%</div></td>
+          <td class="actions"><button class="btn ghost" data-open="${esc(h.id)}">Voir</button></td>
+        </tr>`;
+      }
+    });
+  }
+
+  // wire row controls
+  tb.querySelectorAll(".m_chk").forEach(ch=>{
+    ch.onchange=()=>{ margeSel[ch.dataset.id]=ch.checked; renderMarges(); };
+  });
+  tb.querySelectorAll("button[data-open]").forEach(b=>{
+    b.onclick=()=>{
+      const h = (Array.isArray(devisHistory)?devisHistory:[]).find(x=>x.id===b.dataset.open);
+      if(!h) return;
+      alert(`Devis: ${h.projet||"—"}\nClient: ${h.client||"—"}\nSystème: ${h.sysNom||"—"}\nTotal TTC: ${money(h.totals?.totalTTC||0)}`);
+    };
+  });
+
+  // selection info
+  const info = $("m_sel_info");
+  if(info){
+    const selN = Object.keys(margeSel).filter(k=>margeSel[k]).length;
+    info.textContent = selN ? `Sélection: ${selN} devis` : `Aucune sélection`;
+  }
+}
+
+// Wire marges UI
+
+// Wire marges UI (called from wire())
+function wireMarges(){
+  // If the Marges tab isn't present, do nothing
+  if(!($("m_mode") || $("m_search") || $("m_sel_all") || $("m_sel_none") || $("m_sel_clear"))) return;
+
+  if($("m_mode")) $("m_mode").onchange = renderMarges;
+  if($("m_search")) $("m_search").oninput = renderMarges;
+  ["m_from","m_to","m_sys","m_client"].forEach(id=>{
+    if($(id)) $(id).onchange = renderMarges;
+  });
+
+  if($("m_sel_all")) $("m_sel_all").onclick = ()=>{
+    margesFilteredList().forEach(h=>{ margeSel[h.id] = true; });
+    renderMarges();
+  };
+  if($("m_sel_none")) $("m_sel_none").onclick = ()=>{
+    margesFilteredList().forEach(h=>{ margeSel[h.id] = false; });
+    renderMarges();
+  };
+  if($("m_sel_clear")) $("m_sel_clear").onclick = ()=>{
+    margeSel = {};
+    renderMarges();
+  };
+}
+
+
+
+
+})();
+
+</script>
+</body>
+</html>
